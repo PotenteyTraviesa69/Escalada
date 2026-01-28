@@ -5,46 +5,32 @@ from PIL import Image, ImageDraw
 import os
 
 # --- CONFIGURACIÓN ---
-st.set_page_config(page_title="Mapa de Escalada v6", layout="centered")
+st.set_page_config(page_title="Mapa de Escalada v6.1", layout="centered")
 DATA_FILE = "dolores_escalada_v6.csv"
 
-# --- 1. DEFINICIÓN DE REGIONES (ANATOMÍA DETALLADA) ---
-# Lienzo 800x600. Eje central frontal aprox X=200. Eje central posterior aprox X=600.
+# --- 1. DEFINICIÓN DE REGIONES ---
+# Lienzo 800x600.
 
 ZONAS_MUSCULARES = {
     # --- VISTA FRONTAL (Izq) ---
-    # Pectorales Divididos
     "F_Pectoral_Izq": [(200, 160), (300, 160), (280, 220), (200, 220)], 
     "F_Pectoral_Der": [(100, 160), (200, 160), (200, 220), (120, 220)],
-    
     "F_Abdominales": [(140, 220), (260, 220), (250, 320), (150, 320)],
-    
-    # Brazos Frontal
     "F_Biceps_Izq": [(300, 170), (340, 170), (330, 210), (290, 210)],
     "F_Biceps_Der": [(60, 170), (100, 170), (110, 210), (70, 210)],
     "F_Antebrazo_Izq": [(330, 230), (370, 230), (360, 280), (320, 280)],
     "F_Antebrazo_Der": [(30, 230), (70, 230), (80, 280), (40, 280)],
-    
-    # Piernas Frontal
     "F_Cuadriceps_Izq": [(220, 320), (280, 320), (270, 440), (230, 440)],
     "F_Cuadriceps_Der": [(120, 320), (180, 320), (170, 440), (130, 440)],
 
     # --- VISTA POSTERIOR (Der) ---
-    # Trapecios Divididos
     "P_Trapecio_Izq": [(520, 110), (600, 110), (600, 140), (520, 140)],
     "P_Trapecio_Der": [(600, 110), (680, 110), (680, 140), (600, 140)],
-    
-    # Dorsales Divididos
     "P_Dorsal_Izq": [(530, 180), (600, 180), (600, 280), (550, 280)],
     "P_Dorsal_Der": [(600, 180), (670, 180), (650, 280), (600, 280)],
-    
-    # Brazos Posterior
     "P_Triceps_Izq": [(500, 170), (540, 170), (530, 210), (490, 210)],
     "P_Triceps_Der": [(660, 170), (700, 170), (710, 210), (670, 210)],
-    
     "P_Lumbar": [(560, 280), (640, 280), (640, 320), (560, 320)],
-    
-    # Piernas Posterior
     "P_Isquios_Izq": [(530, 350), (580, 350), (570, 440), (540, 440)],
     "P_Isquios_Der": [(620, 350), (670, 350), (660, 440), (630, 440)],
     "P_Gemelo_Izq": [(530, 480), (570, 480), (560, 550), (540, 550)],
@@ -67,10 +53,13 @@ ZONAS_ARTICULARES = {
     # --- VISTA POSTERIOR ---
     "P_Codo_Izq": [(500, 210), (540, 210), (540, 230), (500, 230)],
     "P_Codo_Der": [(660, 210), (700, 210), (700, 230), (660, 230)],
+    
+    # --- NUEVO: CADERAS ---
+    "P_Cadera_Izq": [(480, 290), (530, 290), (530, 340), (480, 340)],
+    "P_Cadera_Der": [(670, 290), (720, 290), (720, 340), (670, 340)],
 }
 
 # --- 2. CONFIGURACIÓN DE USUARIOS ---
-# Prioridad de capas: 0 (Fondo), 1-3 (Tramas encima)
 USERS_CONFIG = {
     "Álvaro": {"pattern": "solid",         "priority": 0}, 
     "Javier": {"pattern": "lines_oblique", "priority": 1}, 
@@ -154,9 +143,8 @@ def draw_pattern_in_region(draw_ctx, polygon, user_pattern, color_rgb):
                     draw_ctx.rectangle((x, y, x+3, y+3), fill=dot_color)
 
 # --- INICIO DE APP ---
-st.title("🧗 Mapa de Escalada v6")
+st.title("🧗 Mapa de Escalada v6.1")
 
-# Estado para evitar doble click
 if 'last_click_coords' not in st.session_state:
     st.session_state['last_click_coords'] = None
 
@@ -202,7 +190,7 @@ for _, row in df[df['tipo'] == "Herida"].iterrows():
     cx, cy = row['x'], row['y']
     draw.ellipse((cx-5, cy-5, cx+5, cy+5), fill=(255, 0, 0, 255), outline="white", width=2)
 
-# 3. DEBUG: BORDES MORADOS (Según selección)
+# 3. DEBUG: BORDES MORADOS
 zones_to_check = {}
 if tipo_dolor == "Músculo":
     zones_to_check = ZONAS_MUSCULARES
@@ -221,7 +209,6 @@ st.info(f"Marcando: {tipo_dolor}. Haz click en las zonas moradas.")
 value = streamlit_image_coordinates(final_img, key="main_canvas", width=700)
 
 if value:
-    # Verificación anti-fantasma
     current_coords = (value['x'], value['y'])
     
     if st.session_state['last_click_coords'] != current_coords:
