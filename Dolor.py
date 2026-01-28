@@ -5,52 +5,57 @@ from PIL import Image, ImageDraw
 import os
 
 # --- CONFIGURACIÓN ---
-st.set_page_config(page_title="Mapa de Escalada", layout="centered")
-DATA_FILE = "dolores_escalada.csv"
+st.set_page_config(page_title="Mapa de Escalada Pro", layout="centered")
+DATA_FILE = "dolores_escalada_v3.csv"
 
-# Definición de Polígonos Musculares (Coordenadas aproximadas para 400x600)
-# Formato: "Nombre": [(x1, y1), (x2, y2), (x3, y3)...]
-BODY_POLYGONS = {
-    # Torso
-    "Pectoral": [(130, 160), (270, 160), (260, 210), (140, 210)],
-    "Abdominales": [(160, 210), (240, 210), (230, 310), (170, 310)],
-    "Dorsal": [(110, 180), (130, 180), (140, 250), (100, 230)],
-    "Trapecio": [(150, 110), (250, 110), (280, 140), (120, 140)],
-    "Cuello": [(180, 70), (220, 70), (220, 110), (180, 110)],
+# --- 1. DEFINICIÓN DE REGIONES (ANATOMÍA) ---
+# Coordenadas aproximadas para un lienzo de 800x600 (400 izq para frontal, 400 der para dorsal)
+# Formato: "Nombre": [(x1, y1), (x2, y2)...]
+# LADO IZQUIERDO DE LA IMAGEN = VISTA FRONTAL
+# LADO DERECHO DE LA IMAGEN = VISTA POSTERIOR
+
+BODY_ZONES = {
+    # --- VISTA FRONTAL (0 a 400px X) ---
+    "F_Hombro_Izq": [(300, 130), (350, 130), (340, 170), (290, 160)], # Lado del usuario (espejo) o anatómico? Usamos anatómico estandar
+    "F_Hombro_Der": [(50, 130), (100, 130), (110, 160), (60, 170)],
+    "F_Pectoral": [(100, 160), (300, 160), (280, 220), (120, 220)],
+    "F_Abdominales": [(140, 220), (260, 220), (250, 320), (150, 320)],
+    "F_Cuadriceps_Izq": [(220, 320), (280, 320), (270, 450), (230, 450)],
+    "F_Cuadriceps_Der": [(120, 320), (180, 320), (170, 450), (130, 450)],
     
-    # Brazos
-    "Hombros": [(100, 130), (150, 130), (150, 170), (90, 160)],
-    "Bíceps": [(100, 170), (140, 170), (130, 210), (90, 200)],
-    "Tríceps": [(80, 170), (100, 170), (90, 210), (70, 200)], # Visible si es vista posterior/lateral
-    "Antebrazos": [(80, 210), (130, 210), (120, 280), (70, 270)],
-    "Mano": [(60, 280), (130, 280), (120, 310), (60, 310)],
-    "Dedos (Mano)": [(50, 310), (130, 310), (130, 330), (50, 330)],
+    # Articulaciones Frontales (Ahora son zonas)
+    "F_Rodilla_Izq": [(230, 450), (270, 450), (270, 480), (230, 480)],
+    "F_Rodilla_Der": [(130, 450), (170, 450), (170, 480), (130, 480)],
+    "F_Muneca_Izq": [(340, 280), (380, 280), (380, 300), (340, 300)],
+    "F_Muneca_Der": [(20, 280), (60, 280), (60, 300), (20, 300)],
 
-    # Piernas
-    "Cuádriceps": [(140, 310), (260, 310), (250, 420), (150, 420)],
-    "Isquiotibiales": [(150, 420), (250, 420), (240, 460), (160, 460)], # Posterior
-    "Gemelos": [(150, 460), (250, 460), (240, 530), (160, 530)],
-    "Dedos (Pie)": [(140, 560), (260, 560), (260, 580), (140, 580)],
+    # --- VISTA POSTERIOR (400 a 800px X) ---
+    # Sumamos 400 a la X para moverlo a la derecha
+    "P_Trapecio": [(550, 110), (650, 110), (680, 140), (520, 140)],
+    "P_Dorsal": [(530, 180), (670, 180), (650, 280), (550, 280)],
+    "P_Lumbar": [(560, 280), (640, 280), (640, 320), (560, 320)],
+    "P_Gemelo_Izq": [(530, 480), (570, 480), (560, 550), (540, 550)], # Anatómico: Izq en posterior es Izq visual
+    "P_Gemelo_Der": [(630, 480), (670, 480), (660, 550), (640, 550)],
+    
+    # Articulaciones Posteriores
+    "P_Codo_Izq": [(500, 220), (540, 220), (540, 250), (500, 250)],
+    "P_Codo_Der": [(660, 220), (700, 220), (700, 250), (660, 250)],
 }
 
-# Configuración de Usuarios (Forma del punto y Tipo de Trama para músculo)
+# --- 2. CONFIGURACIÓN DE USUARIOS Y PRIORIDAD DE DIBUJO ---
+# Priority: define quién se pinta primero. 0 (Sólido) debe ir al fondo.
+# Los patrones (rayas, cruces) deben ir encima (Priority 1, 2, 3).
 USERS_CONFIG = {
-    "Álvaro": {"shape": "circle", "pattern": "solid"},       # Relleno sólido
-    "Javier": {"shape": "square", "pattern": "lines_diag"},  # Rayas diagonales
-    "Jordi":  {"shape": "triangle", "pattern": "lines_cross"}, # Cuadrícula/Cruces
-    "Miguel": {"shape": "diamond", "pattern": "dots"}        # Puntos
+    "Álvaro": {"color": (255, 140, 0), "pattern": "solid", "priority": 0},    # Naranja solido
+    "Javier": {"color": (0, 0, 0),     "pattern": "lines_diag", "priority": 1}, # Negro rayas
+    "Jordi":  {"color": (0, 0, 200),   "pattern": "cross", "priority": 2},      # Azul cruces
+    "Miguel": {"color": (200, 0, 0),   "pattern": "dots", "priority": 3}        # Rojo puntos
 }
 
-COLORS = {
-    "Músculo": (255, 165, 0),     # Naranja
-    "Herida": (255, 0, 0),        # Rojo
-    "Articulación": (0, 0, 255)   # Azul
-}
-
-# --- FUNCIONES AUXILIARES ---
+# --- FUNCIONES GRÁFICAS ---
 
 def point_in_polygon(x, y, polygon):
-    """Algoritmo Ray Casting para detectar si un click está dentro de un músculo"""
+    """Ray Casting para detectar clicks"""
     n = len(polygon)
     inside = False
     p1x, p1y = polygon[0]
@@ -66,162 +71,171 @@ def point_in_polygon(x, y, polygon):
         p1x, p1y = p2x, p2y
     return inside
 
-def draw_pattern(draw_obj, polygon, pattern_type, color):
-    """Dibuja texturas manuales dentro del polígono (Rayas, puntos, etc.)"""
-    # 1. Dibujar contorno siempre
-    draw_obj.polygon(polygon, outline=color, width=2)
+def draw_layer(draw_ctx, polygon, config):
+    """Dibuja una capa específica sobre el polígono"""
+    color = config["color"]
+    pattern = config["pattern"]
     
-    # Bounding box del polígono para iterar
     min_x = min(p[0] for p in polygon)
     max_x = max(p[0] for p in polygon)
     min_y = min(p[1] for p in polygon)
     max_y = max(p[1] for p in polygon)
-    
-    # Color con transparencia para el relleno
-    fill_color = color + (100,) # Añadir canal Alpha (0-255)
 
-    if pattern_type == "solid":
-        draw_obj.polygon(polygon, fill=fill_color)
+    if pattern == "solid":
+        # Relleno con transparencia
+        fill = color + (100,) # Alpha 100/255
+        draw_ctx.polygon(polygon, fill=fill)
     
-    elif pattern_type == "lines_diag":
-        step = 10
-        for i in range(min_x - (max_y - min_y), max_x, step):
-            # Dibujamos líneas y dejamos que PIL recorte visualmente no es nativo, 
-            # pero simulamos dibujando solo si el centro está dentro.
-            # Método simplificado: Dibujar polígono transparente + Líneas encima
-            pass 
-        # *Nota*: Hacer clipping de líneas en PIL puro es complejo y lento.
-        # Alternativa visual efectiva: Relleno semitransparente + Símbolo central
-        draw_obj.polygon(polygon, fill=fill_color)
-        cx = int((min_x + max_x)/2)
-        cy = int((min_y + max_y)/2)
-        draw_obj.line((cx-10, cy-10, cx+10, cy+10), fill="black", width=2)
-        draw_obj.line((cx-5, cy-5, cx+5, cy+5), fill="black", width=2)
-        
-    elif pattern_type == "lines_cross":
-        draw_obj.polygon(polygon, fill=fill_color)
-        # Dibujar una 'X' grande sobre el músculo para representar la trama
-        draw_obj.line((min_x, min_y, max_x, max_y), fill="white", width=1)
-        draw_obj.line((min_x, max_y, max_x, min_y), fill="white", width=1)
-
-    elif pattern_type == "dots":
-        draw_obj.polygon(polygon, fill=fill_color)
-        # Punteado simple
+    elif pattern == "lines_diag":
+        # Rayas diagonales sin relleno de fondo (solo líneas)
         step = 8
-        for x in range(min_x, max_x, step):
-            for y in range(min_y, max_y, step):
+        for i in range(int(min_x - (max_y - min_y)), int(max_x), step):
+            # Dibujamos líneas largas y dejamos que el "clip" visual sea el cerebro
+            # Para hacerlo perfecto necesitaríamos máscaras, aquí usamos una aproximación:
+            # Dibujar la línea SOLO si pasa cerca del centro (simplificado para Streamlit)
+            pass
+        # Aproximación visual robusta: Icono de patrón en el centro
+        cx, cy = int((min_x+max_x)/2), int((min_y+max_y)/2)
+        draw_ctx.line((min_x, min_y, max_x, max_y), fill=color + (200,), width=2)
+        draw_ctx.line((min_x, max_y, max_x, min_y), fill=color + (200,), width=2)
+        
+    elif pattern == "cross":
+        # Cuadrícula
+        step = 10
+        for x in range(int(min_x), int(max_x), step):
+            if point_in_polygon(x, (min_y+max_y)/2, polygon):
+                 draw_ctx.line((x, min_y, x, max_y), fill=color + (150,), width=1)
+        
+    elif pattern == "dots":
+        # Puntos
+        step = 6
+        for x in range(int(min_x), int(max_x), step):
+            for y in range(int(min_y), int(max_y), step):
                 if point_in_polygon(x, y, polygon):
-                    draw_obj.point((x, y), fill="white")
+                    draw_ctx.point((x, y), fill=color + (255,))
 
 # --- GESTIÓN DE DATOS ---
 def load_data():
     if not os.path.exists(DATA_FILE):
-        return pd.DataFrame(columns=["x", "y", "nombre", "tipo", "region", "fecha"])
+        return pd.DataFrame(columns=["usuario", "region", "fecha"])
     return pd.read_csv(DATA_FILE)
 
-def save_pain(x, y, nombre, tipo, region=None):
+def save_pain_region(usuario, region):
     df = load_data()
-    new_row = {"x": x, "y": y, "nombre": nombre, "tipo": tipo, "region": region, "fecha": pd.Timestamp.now()}
-    df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-    df.to_csv(DATA_FILE, index=False)
+    # Evitar duplicados del mismo usuario en la misma region
+    if not ((df['usuario'] == usuario) & (df['region'] == region)).any():
+        new_row = {"usuario": usuario, "region": region, "fecha": pd.Timestamp.now()}
+        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+        df.to_csv(DATA_FILE, index=False)
+        return True
+    return False
 
 def clear_data():
-    # ARREGLO PROBLEMA 1: Sobrescribir con DataFrame vacío (solo headers)
-    empty_df = pd.DataFrame(columns=["x", "y", "nombre", "tipo", "region", "fecha"])
-    empty_df.to_csv(DATA_FILE, index=False)
+    pd.DataFrame(columns=["usuario", "region", "fecha"]).to_csv(DATA_FILE, index=False)
 
-# --- APP ---
-st.title("🧗 Mapa de Lesiones 2.0")
+# --- INTERFAZ ---
+st.title("🧗 Mapa de Lesiones Bilateral")
 
-# Controles
-c1, c2, c3 = st.columns(3)
-with c1:
-    usuario = st.selectbox("Usuario", list(USERS_CONFIG.keys()))
-with c2:
-    modo = st.radio("¿Qué marcas?", ["Músculo (Zona)", "Punto (Herida/Articulación)"])
-with c3:
-    if modo == "Punto (Herida/Articulación)":
-        tipo_punto = st.selectbox("Tipo", ["Herida", "Articulación"])
-    else:
-        st.info("Marca zonas musculares")
+col_u, col_a = st.columns(2)
+with col_u:
+    usuario_activo = st.selectbox("Selecciona tu nombre", list(USERS_CONFIG.keys()))
 
-# Imagen
-try:
-    base_img = Image.open("cuerpo.png").convert("RGBA")
-except:
-    base_img = Image.new('RGBA', (400, 600), (220, 220, 220, 255))
-
-overlay = Image.new('RGBA', base_img.size, (0,0,0,0))
-draw = ImageDraw.Draw(overlay)
+# Cargar datos
 df = load_data()
 
-# 1. PINTAR MÚSCULOS (Zonas)
-musculos_df = df[df['tipo'] == "Músculo"]
-for _, row in musculos_df.iterrows():
-    if pd.notna(row['region']) and row['region'] in BODY_POLYGONS:
-        poly = BODY_POLYGONS[row['region']]
-        u_conf = USERS_CONFIG.get(row['nombre'], USERS_CONFIG["Álvaro"])
-        color_rgb = COLORS["Músculo"]
-        
-        # Función personalizada de tramado
-        draw_pattern(draw, poly, u_conf['pattern'], color_rgb)
+# --- PREPARAR IMAGEN ---
+# Crear lienzo base (Ancho doble para dos vistas)
+W, H = 800, 600
+try:
+    # Intenta cargar imagen 'cuerpo_completo.png' (debe ser 800x600)
+    base_img = Image.open("cuerpo_completo.png").convert("RGBA")
+except:
+    base_img = Image.new('RGBA', (W, H), (240, 240, 240, 255))
+    d_temp = ImageDraw.Draw(base_img)
+    d_temp.line((400, 0, 400, 600), fill="black", width=2) # Separador
+    d_temp.text((10, 10), "VISTA FRONTAL (Anterior)", fill="black")
+    d_temp.text((410, 10), "VISTA POSTERIOR (Dorsal)", fill="black")
 
-# 2. PINTAR PUNTOS (Heridas/Articulaciones)
-puntos_df = df[df['tipo'] != "Músculo"]
-for _, row in puntos_df.iterrows():
-    cx, cy = row['x'], row['y']
-    u_conf = USERS_CONFIG.get(row['nombre'], USERS_CONFIG["Álvaro"])
-    color = COLORS.get(row['tipo'], (0,0,0))
-    r = 6
-    
-    # Formas geométricas
-    if u_conf['shape'] == "circle":
-        draw.ellipse((cx-r, cy-r, cx+r, cy+r), fill=color, outline="white")
-    elif u_conf['shape'] == "square":
-        draw.rectangle((cx-r, cy-r, cx+r, cy+r), fill=color, outline="white")
-    elif u_conf['shape'] == "triangle":
-        draw.polygon([(cx, cy-r), (cx-r, cy+r), (cx+r, cy+r)], fill=color, outline="white")
-    elif u_conf['shape'] == "diamond":
-        draw.polygon([(cx, cy-r), (cx+r, cy), (cx, cy+r), (cx-r, cy)], fill=color, outline="white")
+# Capa de dibujo transparente
+overlay = Image.new('RGBA', base_img.size, (0,0,0,0))
+draw = ImageDraw.Draw(overlay)
+
+# --- LÓGICA DE DIBUJO ---
+# 1. Agrupar dolores por región
+dolores_por_region = df.groupby("region")['usuario'].apply(list).to_dict()
+
+# 2. Iterar regiones activas
+for region_name, users_list in dolores_por_region.items():
+    if region_name in BODY_ZONES:
+        polygon = BODY_ZONES[region_name]
+        
+        # 3. Ordenar usuarios por prioridad (Sólidos primero, tramas después)
+        users_sorted = sorted(users_list, key=lambda u: USERS_CONFIG[u]["priority"])
+        
+        # 4. Dibujar cada capa secuencialmente
+        for u in users_sorted:
+            draw_layer(draw, polygon, USERS_CONFIG[u])
+        
+        # Dibujar borde negro final para delimitar el músculo
+        draw.polygon(polygon, outline="black", width=1)
 
 # Componer imagen final
 final_img = Image.alpha_composite(base_img, overlay)
 
-st.write(f"**Turno de: {usuario}** ({USERS_CONFIG[usuario]['shape']} / {USERS_CONFIG[usuario]['pattern']})")
-value = streamlit_image_coordinates(final_img, key="body_canvas")
+# --- SISTEMA DE SELECCIÓN (PESTAÑAS) ---
+tab1, tab2 = st.tabs(["🖱️ Tocar en Mapa", "📋 Seleccionar de Lista"])
 
-# Lógica de Click
-if value:
-    click_x, click_y = value['x'], value['y']
-    
-    # Evitar doble click al refrescar
-    last_x = df.iloc[-1]['x'] if not df.empty else -1
-    last_y = df.iloc[-1]['y'] if not df.empty else -1
-    
-    if click_x != last_x or click_y != last_y:
+with tab1:
+    st.caption("Izquierda: Frente | Derecha: Espalda")
+    value = streamlit_image_coordinates(final_img, key="canvas", width=700) # Ajustar width visual
+
+    if value:
+        cx, cy = value['x'], value['y']
+        # Mapear click a coordenadas reales de imagen (si hay reescalado)
+        # Asumimos escala 1:1 para simplificar, si width=700, factor corrección necesario si img es 800
+        factor = W / 700 
+        real_x, real_y = cx * factor, cy * factor
         
-        saved = False
-        if modo == "Músculo (Zona)":
-            # Detectar si click cae en algún polígono
-            for nombre_musculo, poly in BODY_POLYGONS.items():
-                if point_in_polygon(click_x, click_y, poly):
-                    save_pain(click_x, click_y, usuario, "Músculo", region=nombre_musculo)
-                    st.toast(f"Músculo marcado: {nombre_musculo}")
-                    saved = True
+        found = False
+        for name, poly in BODY_ZONES.items():
+            if point_in_polygon(real_x, real_y, poly):
+                if save_pain_region(usuario_activo, name):
+                    st.toast(f"Añadido: {name}")
                     st.rerun()
-                    break
-            if not saved:
-                st.warning("Click fuera de zona muscular definida. Intenta en el centro del músculo.")
-        
-        else: # Modo Punto
-            save_pain(click_x, click_y, usuario, tipo_punto)
-            st.toast(f"{tipo_punto} marcado")
+                found = True
+                break
+
+with tab2:
+    st.write("Selecciona directamente la zona afectada:")
+    # Crear lista amigable
+    zonas_disponibles = sorted(list(BODY_ZONES.keys()))
+    
+    # Multiselect para añadir rápido
+    seleccion = st.multiselect("Zonas", zonas_disponibles)
+    if st.button("Añadir Zonas Seleccionadas"):
+        count = 0
+        for zona in seleccion:
+            if save_pain_region(usuario_activo, zona):
+                count += 1
+        if count > 0:
+            st.success(f"Se han añadido {count} zonas.")
             st.rerun()
+        else:
+            st.info("Esas zonas ya estaban marcadas.")
 
-# Tabla y Borrado
-with st.expander("Ver Datos"):
-    st.dataframe(df)
+# --- DATOS Y BORRADO ---
+st.divider()
+c1, c2 = st.columns([2, 1])
+with c1:
+    st.write("### Historial de Dolores")
+    # Mostrar tabla más bonita
+    if not df.empty:
+        st.dataframe(df.pivot_table(index="region", columns="usuario", values="fecha", aggfunc="count").fillna("-"))
+    else:
+        st.info("Nadie se ha quejado... todavía.")
 
-if st.button("Borrar TODO el historial"):
-    clear_data()
-    st.rerun()
+with c2:
+    st.write("### Acciones")
+    if st.button("🗑️ Borrar Todo", type="primary"):
+        clear_data()
+        st.rerun()
