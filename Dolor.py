@@ -1,105 +1,109 @@
 import streamlit as st
 import pandas as pd
 from streamlit_image_coordinates import streamlit_image_coordinates
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 import os
 
-# --- CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Mapa de Dolores", page_icon="🧗", layout="centered")
+# --- CONFIGURACIÓN ---
+st.set_page_config(page_title="Escalada: Mapa de Dolores", layout="centered")
 
-# --- BASE DE DATOS (GOOGLE SHEETS) ---
-DATA_FILE = "dolores.csv"
+DATA_FILE = "dolores_escalada.csv"
 
-def load_data():
-    if not os.path.exists(DATA_FILE):
-        return pd.DataFrame(columns=["x", "y", "nombre", "tipo", "fecha"])
-    return pd.read_csv(DATA_FILE)
-
-def save_pain(x, y, nombre, tipo):
-    df = load_data()
-    new_data = pd.DataFrame([{
-        "x": x, 
-        "y": y, 
-        "nombre": nombre, 
-        "tipo": tipo,
-        "fecha": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
-    }])
-    df = pd.concat([df, new_data], ignore_index=True)
-    df.to_csv(DATA_FILE, index=False)
-
-# --- 2. CONFIGURACIÓN VISUAL ---
-# Mapeo de colores según el tipo de dolor
-COLORS = {
-    "Tendón (Polea/Codo)": "red",    # Rojo alarma
-    "Músculo (Petado)": "orange",    # Naranja carga
-    "Articulación": "blue",          # Azul frío
-    "Raspón/Moratón": "purple",      # Morado golpe
-    "Ego Herido": "grey"             # Gris tristeza
+# Definición de regiones musculares (X_min, Y_min, X_max, Y_max)
+# NOTA: Deberás ajustar estos números según las dimensiones de tu 'cuerpo.png'
+MUSCLE_REGIONS = {
+    "Antebrazos": (100, 250, 300, 350),
+    "Hombros": (120, 100, 280, 150),
+    "Dorsales": (130, 160, 270, 240),
+    "Core/Abdominales": (160, 240, 240, 320),
 }
 
-# --- 3. INTERFAZ DE USUARIO ---
-st.title("🧗 Me duele el hombro")
-st.caption("Marca dónde te duele")
+USERS_SHAPES = {
+    "Álvaro": "circle",
+    "Javier": "square",
+    "Jordi": "triangle",
+    "Miguel": "diamond"
+}
 
-# Inputs del usuario
+COLORS = {
+    "Músculo": "#FFA500",      # Naranja (Sombreado)
+    "Herida": "#FF0000",       # Rojo (Punto)
+    "Articulación": "#0000FF", # Azul (Punto)
+}
+
+# --- FUNCIONES DE DATOS ---
+def load_data():
+    if not os.path.exists(DATA_FILE):
+        return pd.DataFrame(columns=["x", "y", "nombre", "tipo", "region", "fecha"])
+    return pd.read_csv(DATA_FILE)
+
+def save_pain(x, y, nombre, tipo, region=None):
+    df = load_data()
+    new_data = pd.DataFrame([{"x": x, "y": y, "nombre": nombre, "tipo": tipo, "region": region, "fecha": pd.Timestamp.now()}])
+    pd.concat([df, new_data], ignore_index=True).to_csv(DATA_FILE, index=False)
+
+def get_region(x, y):
+    for name, coords in MUSCLE_REGIONS.items():
+        if coords[0] <= x <= coords[2] and coords[1] <= y <= coords[3]:
+            return name
+    return None
+
+# --- INTERFAZ ---
+st.title("🧗 Reporte de Averías")
+
 col1, col2 = st.columns(2)
 with col1:
-    usuario = st.selectbox("¿Quién eres?", ["Álvaro", "Javier", "Jordi", "Miguel"])
+    usuario = st.selectbox("¿Quién eres?", list(USERS_SHAPES.keys()))
 with col2:
-    tipo_dolor = st.selectbox("Tipo de dolor", list(COLORS.keys()))
+    tipo_dolor = st.radio("Tipo de lesión", list(COLORS.keys()), horizontal=True)
 
-# --- 4. LÓGICA DEL MAPA E IMAGEN ---
-# Cargar imagen base (Debes tener una imagen 'cuerpo.png' en la carpeta)
-# Si no tienes una, usa un placeholder o descarga una silueta humana simple.
+# --- PROCESAMIENTO DE IMAGEN ---
 try:
-    # Intenta cargar imagen local
-    img = Image.open("cuerpo.png").convert("RGBA")
+    base_img = Image.open("cuerpo.png").convert("RGBA")
 except:
-    # Crea una imagen gris si no hay fichero (para que el código no falle al probar)
-    img = Image.new('RGB', (400, 600), color = (200, 200, 200))
-    d = ImageDraw.Draw(img)
-    d.text((100,300), "Sube una imagen llamada\n'cuerpo.png'", fill=(0,0,0))
+    base_img = Image.new('RGBA', (400, 600), (240, 240, 240, 255))
 
-# DIBUJAR LOS PUNTOS EXISTENTES
-# Pintamos sobre la imagen ANTES de mostrarla. 
-# Esto garantiza que en el móvil los puntos no se muevan de sitio.
+draw = ImageDraw.Draw(base_img)
 df = load_data()
-draw = ImageDraw.Draw(img)
 
-# Radio del punto de dolor
-r = 10 
+# 1. Dibujar sombreado de músculos afectados
+for region in df[df['tipo'] == "Músculo"]['region'].unique():
+    if region in MUSCLE_REGIONS:
+        draw.rectangle(MUSCLE_REGIONS[region], fill=(255, 165, 0, 80)) # Naranja transparente
 
+# 2. Dibujar marcas de usuarios
 for _, row in df.iterrows():
     cx, cy = row['x'], row['y']
+    shape = USERS_SHAPES.get(row['nombre'], "circle")
     color = COLORS.get(row['tipo'], "black")
-    # Dibujar círculo
-    draw.ellipse((cx-r, cy-r, cx+r, cy+r), fill=color, outline="white", width=2)
-
-# --- 5. COMPONENTE INTERACTIVO ---
-st.write("👇 **Toca en el cuerpo para añadir tus dolores**")
-
-# Muestra la imagen y espera el click
-value = streamlit_image_coordinates(img, key="pil")
-
-# --- 6. GUARDAR CLICK ---
-if value is not None:
-    # Verificamos si es un click nuevo comparando con el último guardado
-    last_entry = df.iloc[-1] if not df.empty else None
+    r = 8
     
-    # Lógica simple para evitar duplicados al recargar:
-    # Si las coordenadas son idénticas a la última entrada, no guardamos de nuevo
-    if last_entry is None or (value['x'] != last_entry['x'] or value['y'] != last_entry['y']):
-        save_pain(value['x'], value['y'], usuario, tipo_dolor)
-        st.toast(f"¡Ay! Dolor guardado para {usuario}", icon="🩹")
-        st.rerun() # Recarga la página para mostrar el punto nuevo
+    if shape == "circle":
+        draw.ellipse((cx-r, cy-r, cx+r, cy+r), fill=color, outline="white")
+    elif shape == "square":
+        draw.rectangle((cx-r, cy-r, cx+r, cy+r), fill=color, outline="white")
+    elif shape == "triangle":
+        draw.polygon([(cx, cy-r), (cx-r, cy+r), (cx+r, cy+r)], fill=color, outline="white")
+    else: # Diamond
+        draw.polygon([(cx, cy-r), (cx+r, cy), (cx, cy+r), (cx-r, cy)], fill=color, outline="white")
 
-# --- 7. TABLA RESUMEN (OPCIONAL) ---
-with st.expander("Ver historial de quejas"):
-    st.dataframe(df.sort_values("fecha", ascending=False), use_container_width=True)
+# --- MOSTRAR MAPA ---
+st.write("Haz clic en el músculo o zona afectada:")
+value = streamlit_image_coordinates(base_img, key="body_map")
 
-# Botón para limpiar (útil para empezar de cero)
-if st.button("Borrar datos"):
-    if os.path.exists(DATA_FILE):
-        os.remove(DATA_FILE)
+if value:
+    reg = get_region(value['x'], value['y'])
+    # Evitar duplicados por refresco
+    if df.empty or not ((df.iloc[-1]['x'] == value['x']) and (df.iloc[-1]['y'] == value['y'])):
+        save_pain(value['x'], value['y'], usuario, tipo_dolor, reg)
         st.rerun()
 
+# --- LEYENDA Y TABLA ---
+st.markdown(f"**Leyenda de formas:** 🔵 Álvaro (Círculo) | 🟦 Javier (Cuadrado) | 🔺 Jordi (Triángulo) | 💠 Miguel (Diamante)")
+
+with st.expander("Historial de pupas"):
+    st.table(df.tail(10))
+
+if st.button("Limpiar Mapa"):
+    if os.path.exists(DATA_FILE): os.remove(DATA_FILE)
+    st.rerun()
