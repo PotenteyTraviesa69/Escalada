@@ -1,4 +1,6 @@
 streamlit
-streamlit-image-coordinates
 pandas
+streamlit-image-coordinates
 Pillow
+gspread
+oauth2client
