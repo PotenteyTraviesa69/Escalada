@@ -170,6 +170,37 @@ def save_pain(x, y, usuario, tipo, region=None):
         print("DEBUG: Duplicado.")
         return False
 
+def delete_specific_pain(usuario, tipo, region):
+    """Busca un dolor específico y lo borra de la hoja."""
+    try:
+        sheet = get_google_sheet()
+        if sheet is None: return False
+        
+        # Obtenemos todos los registros para encontrar la fila exacta
+        data = sheet.get_all_records()
+        
+        # Buscamos la fila que coincida con usuario, tipo y region
+        # Nota: Las hojas de cálculo empiezan en fila 1, y los datos en la 2
+        # por eso sumamos +2 al índice de la lista (1 por header, 1 por índice 0)
+        row_to_delete = None
+        for i, row in enumerate(data):
+            # Comparamos cadenas de texto para evitar errores de tipo
+            if (str(row['usuario']) == str(usuario) and 
+                str(row['tipo']) == str(tipo) and 
+                str(row['region']) == str(region)):
+                row_to_delete = i + 2
+                break # Borramos solo el primero que encontremos
+        
+        if row_to_delete:
+            sheet.delete_rows(row_to_delete)
+            st.cache_data.clear()
+            return True
+        return False
+        
+    except Exception as e:
+        st.error(f"Error al borrar dolor específico: {e}")
+        return False
+
 def undo_last_pain():
     """Borra la última fila de la Google Sheet."""
     try:
@@ -303,7 +334,7 @@ for name, poly in zones_to_check.items():
 final_img = Image.alpha_composite(base_img, overlay)
 
 # --- INTERACCIÓN ---
-st.info(f"Marcando: {tipo_dolor}. Haz click en las zonas amarillas.")
+st.info(f"Marcando: {tipo_dolor}. Haz click para AÑADIR o QUITAR dolor.")
 value = streamlit_image_coordinates(final_img, key="main_canvas", width=700)
 
 if value:
@@ -316,24 +347,51 @@ if value:
         click_y = value['y'] * (W/700)
         
         if tipo_dolor == "Herida":
-            save_pain(click_x, click_y, usuario_activo, "Herida")
-            st.toast("Daaabuti")
-            st.rerun()
+            # Las heridas siguen funcionando solo para añadir (es difícil clicar el pixel exacto para borrar)
+            if save_pain(click_x, click_y, usuario_activo, "Herida"):
+                st.toast("Herida guardada")
+                st.rerun()
+            else:
+                st.error("Error guardando herida")
+
         else:
             found = False
             for name, poly in zones_to_check.items():
                 if point_in_polygon(click_x, click_y, poly):
-                    if save_pain(click_x, click_y, usuario_activo, tipo_dolor, region=name):
-                        st.toast(f"Guardado: {name}")
+                    # LÓGICA DE INTERRUPTOR (TOGGLE)
+                    
+                    # 1. Comprobar si ya existe este dolor en el dataframe cargado
+                    ya_existe = False
+                    if not df.empty and 'region' in df.columns:
+                        match = df[
+                            (df['usuario'] == usuario_activo) & 
+                            (df['region'] == name) & 
+                            (df['tipo'] == tipo_dolor)
+                        ]
+                        if not match.empty:
+                            ya_existe = True
+
+                    # 2. Si existe -> BORRAR
+                    if ya_existe:
+                        if delete_specific_pain(usuario_activo, tipo_dolor, name):
+                            st.toast(f"🗑️ Dolor eliminado: {name}")
+                        else:
+                            st.error("No se pudo eliminar.")
+                    
+                    # 3. Si no existe -> GUARDAR
                     else:
-                        st.toast("Deja de llorar, ahí ya te dolía")
+                        if save_pain(click_x, click_y, usuario_activo, tipo_dolor, region=name):
+                            st.toast(f"💾 Guardado: {name}")
+                        else:
+                            st.error("Error al guardar.")
+                    
                     found = True
                     st.rerun()
                     break
             
             if not found:
-                st.warning(f"Ahí no hay na bro")
-
+                st.warning(f"Click fuera de zona {tipo_dolor} válida.")
+                
  # --- DATOS ---
 
 st.divider()
