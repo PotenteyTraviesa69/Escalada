@@ -320,7 +320,6 @@ if not df.empty and 'tipo' in df.columns:
     heridas = df[df['tipo'] == "Herida"].copy()
     
     for i, row in heridas.iterrows():
-        st.error(row)
         try:
             # 1. Obtenemos el valor como string sea lo que sea
             val_x = str(row['x'])
@@ -335,7 +334,7 @@ if not df.empty and 'tipo' in df.columns:
             cy = float(val_y)
             
             # 4. Dibujamos
-            draw.ellipse((cx-5, cy-5, cx+5, cy+5), fill=(255, 0, 0, 255), outline="black", width=1)
+            draw.ellipse((cx-5, cy-5, cx+5, cy+5), fill=(0,255, 0, 255), outline="black", width=1)
             
         except ValueError:
             # Si el dato es basura (ej: una celda vacía), lo saltamos sin romper nada
