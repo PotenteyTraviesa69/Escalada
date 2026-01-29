@@ -8,6 +8,25 @@ import os
 st.set_page_config(page_title="Me duele el hombro", layout="centered")
 DATA_FILE = "dolores_escalada.csv"
 
+# --- CONEXIÓN CON GOOGLE SHEETS ---
+# Función para conectar. Usamos st.cache_resource para no conectar en cada click.
+@st.cache_resource
+def get_google_sheet():
+    # Cargar credenciales desde los secretos de Streamlit
+    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+    
+    # Crea un diccionario con la info de tus secretos
+    # Asegúrate de que en Streamlit Cloud -> Settings -> Secrets tengas una sección [gcp_service_account]
+    creds_dict = dict(st.secrets["gcp_service_account"])
+    
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    client = gspread.authorize(creds)
+    
+    # Abre la hoja por nombre (asegúrate que en tu Drive se llama EXACTAMENTE así)
+    # O mejor, usa la key/url si prefieres: client.open_by_key("TU_ID_DE_LA_URL")
+    sheet = client.open("dolores_escalada").sheet1 
+    return sheet
+
 # --- 1. DEFINICIÓN DE REGIONES (ZONAS) ---
 # He mantenido tus zonas intactas
 ZONAS_MUSCULARES = {
@@ -94,35 +113,45 @@ def point_in_polygon(x, y, polygon):
     return inside
 
 def load_data():
-    """Carga los datos asegurándose de que las columnas existen."""
-    columnas = ["x", "y", "usuario", "tipo", "region", "fecha"]
-    
-    if not os.path.exists(DATA_FILE):
-        return pd.DataFrame(columns=columnas)
-    
+    """Descarga los datos de Google Sheets."""
     try:
-        df = pd.read_csv(DATA_FILE)
-        # Verificación extra: si el CSV existe pero le faltan columnas
-        if df.empty or not all(col in df.columns for col in columnas):
-             return pd.DataFrame(columns=columnas)
+        sheet = get_google_sheet()
+        data = sheet.get_all_records()
+        df = pd.DataFrame(data)
+        # Asegurar columnas si está vacía
+        if df.empty:
+            return pd.DataFrame(columns=["x", "y", "usuario", "tipo", "region", "fecha"])
         return df
-    except pd.errors.EmptyDataError:
-        return pd.DataFrame(columns=columnas)
+    except Exception as e:
+        st.error(f"Error conectando con Google Sheets: {e}")
+        return pd.DataFrame(columns=["x", "y", "usuario", "tipo", "region", "fecha"])
 
 def save_pain(x, y, usuario, tipo, region=None):
-    """Guarda el dolor y fuerza la escritura en disco inmediatamente."""
+    """Guarda el dolor añadiendo una fila a Google Sheets."""
+    print(f"DEBUG: Intentando guardar para {usuario}")
     df = load_data()
+    
+    # Comprobar duplicados
     duplicate = False
-    if region:
+    if region and not df.empty:
+        # Convertimos a string para comparar fácil con lo que viene de sheets
         duplicate = not df[(df['usuario'] == usuario) & (df['region'] == region) & (df['tipo'] == tipo)].empty
     
     if not duplicate:
-        new_row = {"x": x, "y": y, "usuario": usuario, "tipo": tipo, "region": region, "fecha": pd.Timestamp.now()}
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-        # Importante: index=False para no crear columnas extra
-        df.to_csv(DATA_FILE, index=False) 
-        return True
-    return False
+        try:
+            sheet = get_google_sheet()
+            fecha = str(pd.Timestamp.now())
+            # Añadir fila al final
+            sheet.append_row([x, y, usuario, tipo, region, fecha])
+            # Limpiar caché de datos para que al recargar aparezca el nuevo
+            st.cache_data.clear()
+            return True
+        except Exception as e:
+            st.error(f"Error guardando en la nube: {e}")
+            return False
+    else:
+        print("DEBUG: Duplicado.")
+        return False
 
 def undo_last_pain():
     """Borra la última fila del CSV."""
@@ -168,27 +197,27 @@ def draw_pattern_in_region(draw_ctx, polygon, user_pattern, color_rgb):
                     draw_ctx.rectangle((x, y, x+3, y+3), fill=dot_color)
 
 # --- INICIO DE APP ---
-st.title("🧗 Dolores del roco tronko")
+st.title("🧗 Dolores del roco tronko (Cloud Edition)")
 
 if 'last_click_coords' not in st.session_state:
     st.session_state['last_click_coords'] = None
 
-# Barra lateral para acciones globales
-with st.sidebar:
-    st.header("Acciones")
-    # BOTÓN DE DESHACER
-    if st.button("↩️ Deshacer último", help="Borra el último dolor registrado"):
-        if undo_last_pain():
-            st.toast("Último registro eliminado")
-            st.rerun()
-        else:
-            st.warning("No hay registros para borrar.")
-
+# --- SELECTORES ---
 c1, c2 = st.columns(2)
 with c1:
     usuario_activo = st.selectbox("Usuario", list(USERS_CONFIG.keys()))
 with c2:
     tipo_dolor = st.selectbox("Tipo de Dolor", ["Músculo", "Articulación", "Herida"])
+
+# --- BOTÓN DESHACER ---
+c_undo, c_dummy = st.columns([1, 3])
+with c_undo:
+    if st.button("↩️ Deshacer último", help="Borra el último dolor registrado en la nube"):
+        if undo_last_pain():
+            st.toast("Último registro eliminado de la nube")
+            st.rerun()
+        else:
+            st.warning("No se pudo deshacer.")
 
 # --- IMAGEN ---
 W, H = 1200, 1600
@@ -202,7 +231,7 @@ except:
 overlay = Image.new('RGBA', base_img.size, (0,0,0,0))
 draw = ImageDraw.Draw(overlay)
 
-# Cargar datos (ahora es seguro aunque el archivo esté vacío o corrupto)
+# Cargar datos desde Google Sheets
 df = load_data()
 
 # 1. DIBUJAR CAPAS
@@ -282,6 +311,5 @@ if value:
 st.divider()
 
 if not df.empty:
-    st.write("### Historial Reciente")
-    # Mostrar solo las últimas 5 entradas
-    st.dataframe(df[['fecha', 'usuario', 'tipo', 'region']].sort_values("fecha", ascending=False).head(5))
+    st.write("### Historial (Google Sheets)")
+    st.dataframe(df[['fecha', 'usuario', 'tipo', 'region']].tail(5).sort_values("fecha", ascending=False))
