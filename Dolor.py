@@ -334,7 +334,7 @@ if not df.empty and 'tipo' in df.columns:
             cy = float(val_y)
             
             # 4. Dibujamos
-            draw.ellipse((cx-5, cy-5, cx+5, cy+5), fill=(0,255, 0, 255), outline="black", width=1)
+            draw.ellipse((cx-9, cy-9, cx+9, cy+9), fill=(255,0, 0, 255), outline="black", width=3)
             
         except ValueError:
             # Si el dato es basura (ej: una celda vacía), lo saltamos sin romper nada
