@@ -9,11 +9,9 @@ st.set_page_config(page_title="Mapa de Escalada v6.1", layout="centered")
 DATA_FILE = "dolores_escalada_v6.csv"
 
 # --- 1. DEFINICIÓN DE REGIONES ---
-# Lienzo 800x600.
-
 ZONAS_MUSCULARES = {
     # --- VISTA FRONTAL (Izq) ---
-    "F_Pectoral_Izq": [(200, 160), (300, 160), (280, 220), (200, 220)], 
+    "F_Pectoral_Izq": [(166,389),(195,470),(225,490),(228,473),(290,411),(274,365),(283,336),(216,338)], 
     "F_Pectoral_Der": [(100, 160), (200, 160), (200, 220), (120, 220)],
     "F_Abdominales": [(140, 220), (260, 220), (250, 320), (150, 320)],
     "F_Biceps_Izq": [(300, 170), (340, 170), (330, 210), (290, 210)],
