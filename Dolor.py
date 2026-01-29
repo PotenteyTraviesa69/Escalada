@@ -318,9 +318,9 @@ if not regiones_activas.empty:
 if not df.empty and 'tipo' in df.columns:
     # Filtramos solo las heridas
     heridas = df[df['tipo'] == "Herida"].copy()
-    st.error(heridas)
     
     for i, row in heridas.iterrows():
+        st.error(row)
         try:
             # 1. Obtenemos el valor como string sea lo que sea
             val_x = str(row['x'])
