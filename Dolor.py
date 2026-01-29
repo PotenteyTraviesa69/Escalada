@@ -144,30 +144,31 @@ def load_data():
         return pd.DataFrame(columns=["x", "y", "usuario", "tipo", "region", "fecha"])
 
 def save_pain(x, y, usuario, tipo, region=None):
-    """Guarda el dolor añadiendo una fila a Google Sheets."""
+    """Guarda el dolor. Permite múltiples heridas, pero evita duplicados en músculos."""
     print(f"DEBUG: Intentando guardar para {usuario}")
-    df = load_data()
     
-    # Comprobar duplicados
+    # Solo descargamos datos si necesitamos comprobar duplicados (ahorra tiempo)
+    if tipo != "Herida":
+        df = load_data()
+    
     duplicate = False
-    if region and not df.empty:
-        # Convertimos a string para comparar fácil con lo que viene de sheets
+    
+    # SOLO comprobamos duplicados si NO es una herida
+    # (Porque puedes tener 2 heridas distintas, pero no tiene sentido marcar 2 veces el mismo músculo)
+    if tipo != "Herida" and region and not df.empty:
         duplicate = not df[(df['usuario'] == usuario) & (df['region'] == region) & (df['tipo'] == tipo)].empty
     
     if not duplicate:
         try:
             sheet = get_google_sheet()
             fecha = pd.Timestamp.now().strftime("%d/%m/%Y")
-            # Añadir fila al final
             sheet.append_row([x, y, usuario, tipo, region, fecha])
-            # Limpiar caché de datos para que al recargar aparezca el nuevo
             st.cache_data.clear()
             return True
         except Exception as e:
             st.error(f"Error guardando en la nube: {e}")
             return False
     else:
-        print("DEBUG: Duplicado.")
         return False
 
 def delete_specific_pain(usuario, tipo, region):
@@ -315,21 +316,24 @@ if not regiones_activas.empty:
                 
 # 2. DIBUJAR HERIDAS
 if not df.empty and 'tipo' in df.columns:
-    heridas = df[df['tipo'] == "Herida"]
-    for _, row in heridas.iterrows():
-        try:
-            # CORRECCIÓN: Reemplazamos coma por punto antes de convertir a número
-            # y forzamos conversión a string primero para evitar errores
-            raw_x = str(row['x']).replace(',', '.')
-            raw_y = str(row['y']).replace(',', '.')
-            
-            cx = float(raw_x)
-            cy = float(raw_y)
-            
-            draw.ellipse((cx-5, cy-5, cx+5, cy+5), fill=(255, 0, 0, 255), outline="white", width=2)
-        except Exception as e:
-            print(f"Error dibujando herida: {e}") # Para que veas el error en la consola si falla
-            pass
+    heridas = df[df['tipo'] == "Herida"].copy() # Creamos copia para no afectar al original
+    
+    if not heridas.empty:
+        for _, row in heridas.iterrows():
+            try:
+                # 1. Limpieza agresiva de coordenadas
+                x_str = str(row['x']).replace(',', '.').strip()
+                y_str = str(row['y']).replace(',', '.').strip()
+                
+                # 2. Convertir a float
+                cx = float(x_str)
+                cy = float(y_str)
+                
+                # 3. Dibujar
+                draw.ellipse((cx-5, cy-5, cx+5, cy+5), fill=(255, 0, 0, 255), outline="white", width=2)
+            except ValueError:
+                # Si una coordenada está corrupta, la ignoramos silenciosamente
+                continue
 
 # 3. DEBUG: BORDES AMARILLOS (Para ver dónde hacer click)
 zones_to_check = {}
