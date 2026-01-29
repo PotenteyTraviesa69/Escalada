@@ -49,14 +49,12 @@ ZONAS_ARTICULARES = {
     "F_Rodilla_Der": [(130, 440), (170, 440), (170, 480), (130, 480)],
     "F_Tobillo_Izq": [(230, 550), (270, 550), (270, 570), (230, 570)],
     "F_Tobillo_Der": [(130, 550), (170, 550), (170, 570), (130, 570)],
+    "F_Cadera_Izq": [(480, 290), (530, 290), (530, 340), (480, 340)],
+    "F_Cadera_Der": [(670, 290), (720, 290), (720, 340), (670, 340)],
 
     # --- VISTA POSTERIOR ---
     "P_Codo_Izq": [(500, 210), (540, 210), (540, 230), (500, 230)],
     "P_Codo_Der": [(660, 210), (700, 210), (700, 230), (660, 230)],
-    
-    # --- NUEVO: CADERAS ---
-    "P_Cadera_Izq": [(480, 290), (530, 290), (530, 340), (480, 340)],
-    "P_Cadera_Der": [(670, 290), (720, 290), (720, 340), (670, 340)],
 }
 
 # --- 2. CONFIGURACIÓN DE USUARIOS ---
@@ -155,9 +153,9 @@ with c2:
     tipo_dolor = st.selectbox("Tipo de Dolor", ["Músculo", "Articulación", "Herida"])
 
 # --- IMAGEN ---
-W, H = 800, 600
+W, H = 1200, 1600
 try:
-    base_img = Image.open("cuerpo_completo.png").convert("RGBA")
+    base_img = Image.open("cuerpo.jpg").convert("RGBA")
 except:
     base_img = Image.new('RGBA', (W, H), (240, 240, 240, 255))
     d = ImageDraw.Draw(base_img)
