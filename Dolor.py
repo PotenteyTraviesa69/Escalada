@@ -242,16 +242,16 @@ def draw_pattern_in_region(draw_ctx, polygon, user_pattern, color_rgb):
 
     elif user_pattern == "cross":
         cross_color = color_rgb + (255,)
-        for x in range(min_x, max_x, 2):
-            for y in range(min_y, max_y, 2):
+        for x in range(min_x, max_x, 10):
+            for y in range(min_y, max_y, 10):
                 if point_in_polygon(x, y, polygon):
                     draw_ctx.line((x-3, y, x+3, y), fill=cross_color, width=1)
                     draw_ctx.line((x, y-3, x, y+3), fill=cross_color, width=1)
 
     elif user_pattern == "dots":
         dot_color = color_rgb + (255,)
-        for x in range(min_x, max_x, 4):
-            for y in range(min_y, max_y, 4):
+        for x in range(min_x, max_x, 8):
+            for y in range(min_y, max_y, 8):
                 if point_in_polygon(x, y, polygon):
                     draw_ctx.rectangle((x, y, x+3, y+3), fill=dot_color)
 
