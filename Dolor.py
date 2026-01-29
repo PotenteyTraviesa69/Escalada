@@ -153,8 +153,6 @@ def save_pain(x, y, usuario, tipo, region=None):
     
     duplicate = False
     
-    # SOLO comprobamos duplicados si NO es una herida
-    # (Porque puedes tener 2 heridas distintas, pero no tiene sentido marcar 2 veces el mismo músculo)
     if tipo != "Herida" and region and not df.empty:
         duplicate = not df[(df['usuario'] == usuario) & (df['region'] == region) & (df['tipo'] == tipo)].empty
     
@@ -269,6 +267,8 @@ with c1:
 with c2:
     tipo_dolor = st.selectbox("Tipo de Dolor", ["Músculo", "Articulación", "Herida"])
 
+mostrar_zonas = st.toggle("Mostrar zonas", value=True)
+
 # --- BOTÓN DESHACER ---
 c_undo, c_dummy = st.columns([1, 3])
 with c_undo:
@@ -348,9 +348,10 @@ elif tipo_dolor == "Articulación":
 else:
     zones_to_check = ALL_ZONES
 
-for name, poly in zones_to_check.items():
-    draw.polygon(poly, outline="yellow", width=5)
-
+if mostrar_zonas:
+    for name, poly in zones_to_check.items():
+        draw.polygon(poly, outline="yellow", width=5)
+        
 final_img = Image.alpha_composite(base_img, overlay)
 
 # --- INTERACCIÓN ---
