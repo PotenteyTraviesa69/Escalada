@@ -257,7 +257,7 @@ def draw_pattern_in_region(draw_ctx, polygon, user_pattern, color_rgb):
                     draw_ctx.rectangle((x, y, x+3, y+3), fill=dot_color)
 
 # --- INICIO DE APP ---
-st.title("🧗Me hice dolor en el roco tronco")
+st.title("🧗Roco-dolores bro")
 
 if 'last_click_coords' not in st.session_state:
     st.session_state['last_click_coords'] = None
