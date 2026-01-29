@@ -99,9 +99,17 @@ def point_in_polygon(x, y, polygon):
     return inside
 
 def load_data():
+    columns = ["x", "y", "usuario", "tipo", "region", "fecha"]
+    
+    # Si el archivo no existe, devolvemos DataFrame vacío con columnas
     if not os.path.exists(DATA_FILE):
-        return pd.DataFrame(columns=["x", "y", "usuario", "tipo", "region", "fecha"])
-    return pd.read_csv(DATA_FILE)
+        return pd.DataFrame(columns=columns)
+    
+    try:
+        return pd.read_csv(DATA_FILE)
+    except pd.errors.EmptyDataError:
+        # Si el archivo existe pero está vacío (tu error actual), devolvemos DataFrame vacío
+        return pd.DataFrame(columns=columns)
 
 def save_pain(x, y, usuario, tipo, region=None):
     df = load_data()
