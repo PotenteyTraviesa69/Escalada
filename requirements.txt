@@ -1,5 +1,6 @@
-streamlit
-pandas
-streamlit-image-coordinates
-Pillow
-gspread>=5.10.0
+import streamlit as st
+import pandas as pd
+from streamlit_image_coordinates import streamlit_image_coordinates
+from PIL import Image, ImageDraw
+import gspread
+from google.oauth2.service_account import Credentials
