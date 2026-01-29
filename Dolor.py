@@ -3,7 +3,6 @@ import pandas as pd
 from streamlit_image_coordinates import streamlit_image_coordinates
 from PIL import Image, ImageDraw
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
 import json
 
 # --- CONFIGURACIÓN ---
