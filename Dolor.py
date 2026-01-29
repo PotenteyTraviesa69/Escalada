@@ -349,10 +349,10 @@ if value:
         if tipo_dolor == "Herida":
             # Las heridas siguen funcionando solo para añadir (es difícil clicar el pixel exacto para borrar)
             if save_pain(click_x, click_y, usuario_activo, "Herida"):
-                st.toast("Herida guardada")
+                st.toast("Daaabuti")
                 st.rerun()
             else:
-                st.error("Error guardando herida")
+                st.error("Algo sa rompío")
 
         else:
             found = False
@@ -381,16 +381,16 @@ if value:
                     # 3. Si no existe -> GUARDAR
                     else:
                         if save_pain(click_x, click_y, usuario_activo, tipo_dolor, region=name):
-                            st.toast(f"💾 Guardado: {name}")
+                            st.toast("Daaabuti")
                         else:
-                            st.error("Error al guardar.")
+                            st.error("Algo sa rompío")
                     
                     found = True
                     st.rerun()
                     break
             
             if not found:
-                st.warning(f"Click fuera de zona {tipo_dolor} válida.")
+                st.warning("Ahí no hay na kolega")
                 
  # --- DATOS ---
 
