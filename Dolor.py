@@ -8,9 +8,9 @@ import os
 st.set_page_config(page_title="Me duele el hombro", layout="centered")
 DATA_FILE = "dolores_escalada.csv"
 
-# --- 1. DEFINICIÓN DE REGIONES ---
+# --- 1. DEFINICIÓN DE REGIONES (ZONAS) ---
+# He mantenido tus zonas intactas
 ZONAS_MUSCULARES = {
-    # --- VISTA FRONTAL ---
     "F_Pectoral_Izq": [(317, 337), (303, 409), (308, 452), (337, 476), (382, 478), (418, 449), (433, 418), (435, 366), (416, 344), (356, 322)],
     "F_Pectoral_Der": [(166,389),(195,470),(225,490),(288,473),(290,411),(274,365),(283,336),(216,338)],
     "F_Abdominales": [(245, 493), (240, 534), (238, 618), (241, 651), (286, 793), (320, 793), (365, 665), (365, 632), (370, 584), (373, 541), (360, 480), (308, 473)],
@@ -25,8 +25,6 @@ ZONAS_MUSCULARES = {
     "F_Cuello": [(253, 241), (291, 236), (322, 264), (346, 265), (344, 315), (296, 332), (260, 329), (257, 284)],
     "F_Oblicuos_Der": [(219, 500), (197, 516), (204, 584), (197, 642), (222, 687), (226, 630), (229, 553)],
     "F_Oblicuos_Izq": [(377, 490), (382, 548), (377, 615), (373, 696), (421, 670), (416, 613), (428, 540), (438, 502), (430, 454)],
-
-    # --- VISTA POSTERIOR ---
     "P_Trapecio_Izq": [(929, 212), (912, 246), (884, 272), (831, 294), (884, 313), (894, 334), (894, 387), (893, 428), (906, 476), (927, 545), (951, 414), (951, 320), (934, 248)],
     "P_Trapecio_Der": [(954, 216), (948, 245), (960, 317), (965, 413), (949, 548), (984, 495), (1016, 447), (1025, 396), (1021, 342), (1052, 320), (1002, 293), (972, 264)],
     "P_Dorsal_Izq": [(834, 433), (862, 437), (884, 433), (898, 483), (922, 552), (889, 594), (867, 636), (857, 677), (822, 596), (805, 545), (829, 492)],
@@ -45,7 +43,6 @@ ZONAS_MUSCULARES = {
 }
 
 ZONAS_ARTICULARES = {
-    # --- VISTA FRONTAL ---
     "F_Muneca_Izq": [(509, 708), (541, 702), (574, 708), (576, 740), (543, 737), (512, 740)],
     "F_Muneca_Der": [(41, 732), (68, 735), (97, 740), (96, 774), (70, 768), (41, 776)],
     "F_Rodilla_Izq": [(408, 1136), (438, 1174), (464, 1181), (473, 1109), (476, 1080), (452, 1050), (433, 1050), (433, 1092)],
@@ -58,8 +55,6 @@ ZONAS_ARTICULARES = {
     "F_Dedos_Pie_Izq": [(541, 1462), (541, 1476), (567, 1481), (582, 1472), (577, 1448), (560, 1452)],
     "F_Dedos_Mano_Der": [(42, 826), (73, 807), (102, 785), (123, 840), (114, 882), (80, 889)],
     "F_Dedos_Mano_Izq": [(509, 757), (550, 774), (582, 780), (579, 824), (560, 848), (522, 852), (498, 817)],
-
-    # --- VISTA POSTERIOR ---
     "P_Hombro_Der": [(1028, 341), (1078, 365), (1114, 416), (1116, 366), (1090, 324), (1066, 324)],
     "P_Hombro_Izq": [(761, 332), (749, 370), (750, 416), (795, 377), (824, 339), (884, 324), (814, 300)],
     "P_Codo_Izq": [(744, 552), (721, 576), (747, 608), (781, 610), (783, 569)],
@@ -99,19 +94,23 @@ def point_in_polygon(x, y, polygon):
     return inside
 
 def load_data():
-    columns = ["x", "y", "usuario", "tipo", "region", "fecha"]
+    """Carga los datos asegurándose de que las columnas existen."""
+    columnas = ["x", "y", "usuario", "tipo", "region", "fecha"]
     
-    # Si el archivo no existe, devolvemos DataFrame vacío con columnas
     if not os.path.exists(DATA_FILE):
-        return pd.DataFrame(columns=columns)
+        return pd.DataFrame(columns=columnas)
     
     try:
-        return pd.read_csv(DATA_FILE)
+        df = pd.read_csv(DATA_FILE)
+        # Verificación extra: si el CSV existe pero le faltan columnas
+        if df.empty or not all(col in df.columns for col in columnas):
+             return pd.DataFrame(columns=columnas)
+        return df
     except pd.errors.EmptyDataError:
-        # Si el archivo existe pero está vacío (tu error actual), devolvemos DataFrame vacío
-        return pd.DataFrame(columns=columns)
+        return pd.DataFrame(columns=columnas)
 
 def save_pain(x, y, usuario, tipo, region=None):
+    """Guarda el dolor y fuerza la escritura en disco inmediatamente."""
     df = load_data()
     duplicate = False
     if region:
@@ -120,6 +119,17 @@ def save_pain(x, y, usuario, tipo, region=None):
     if not duplicate:
         new_row = {"x": x, "y": y, "usuario": usuario, "tipo": tipo, "region": region, "fecha": pd.Timestamp.now()}
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+        # Importante: index=False para no crear columnas extra
+        df.to_csv(DATA_FILE, index=False) 
+        return True
+    return False
+
+def undo_last_pain():
+    """Borra la última fila del CSV."""
+    df = load_data()
+    if not df.empty:
+        # Elimina la última fila
+        df = df.iloc[:-1]
         df.to_csv(DATA_FILE, index=False)
         return True
     return False
@@ -163,6 +173,17 @@ st.title("🧗 Dolores del roco tronko")
 if 'last_click_coords' not in st.session_state:
     st.session_state['last_click_coords'] = None
 
+# Barra lateral para acciones globales
+with st.sidebar:
+    st.header("Acciones")
+    # BOTÓN DE DESHACER
+    if st.button("↩️ Deshacer último", help="Borra el último dolor registrado"):
+        if undo_last_pain():
+            st.toast("Último registro eliminado")
+            st.rerun()
+        else:
+            st.warning("No hay registros para borrar.")
+
 c1, c2 = st.columns(2)
 with c1:
     usuario_activo = st.selectbox("Usuario", list(USERS_CONFIG.keys()))
@@ -176,36 +197,41 @@ try:
 except:
     base_img = Image.new('RGBA', (W, H), (240, 240, 240, 255))
     d = ImageDraw.Draw(base_img)
-    d.text((10,10), "ERROR: Sube 'cuerpo_completo.png'", fill="red")
+    d.text((10,10), "ERROR: Sube 'cuerpo.jpg'", fill="red")
 
 overlay = Image.new('RGBA', base_img.size, (0,0,0,0))
 draw = ImageDraw.Draw(overlay)
 
+# Cargar datos (ahora es seguro aunque el archivo esté vacío o corrupto)
 df = load_data()
 
 # 1. DIBUJAR CAPAS
 ALL_ZONES = {**ZONAS_MUSCULARES, **ZONAS_ARTICULARES}
 regiones_activas = df[df['tipo'].isin(["Músculo", "Articulación"])]
-mapa_dolor = regiones_activas.groupby("region").apply(lambda x: x[['usuario', 'tipo']].to_dict('records')).to_dict()
 
-for region_name, entries in mapa_dolor.items():
-    if region_name in ALL_ZONES:
-        poly = ALL_ZONES[region_name]
-        entries_sorted = sorted(entries, key=lambda x: USERS_CONFIG[x['usuario']]["priority"])
-        
-        for entry in entries_sorted:
-            u_name = entry['usuario']
-            t_dolor = entry['tipo']
-            color = TYPE_COLORS.get(t_dolor, (0,0,0))
-            pattern = USERS_CONFIG[u_name]["pattern"]
-            draw_pattern_in_region(draw, poly, pattern, color)
+# Solo procesar si hay datos
+if not regiones_activas.empty:
+    mapa_dolor = regiones_activas.groupby("region").apply(lambda x: x[['usuario', 'tipo']].to_dict('records')).to_dict()
+
+    for region_name, entries in mapa_dolor.items():
+        if region_name in ALL_ZONES:
+            poly = ALL_ZONES[region_name]
+            entries_sorted = sorted(entries, key=lambda x: USERS_CONFIG[x['usuario']]["priority"])
+            
+            for entry in entries_sorted:
+                u_name = entry['usuario']
+                t_dolor = entry['tipo']
+                color = TYPE_COLORS.get(t_dolor, (0,0,0))
+                pattern = USERS_CONFIG[u_name]["pattern"]
+                draw_pattern_in_region(draw, poly, pattern, color)
 
 # 2. DIBUJAR HERIDAS
-for _, row in df[df['tipo'] == "Herida"].iterrows():
-    cx, cy = row['x'], row['y']
-    draw.ellipse((cx-5, cy-5, cx+5, cy+5), fill=(255, 0, 0, 255), outline="white", width=2)
+if not df.empty:
+    for _, row in df[df['tipo'] == "Herida"].iterrows():
+        cx, cy = row['x'], row['y']
+        draw.ellipse((cx-5, cy-5, cx+5, cy+5), fill=(255, 0, 0, 255), outline="white", width=2)
 
-# 3. DEBUG: BORDES MORADOS
+# 3. DEBUG: BORDES AMARILLOS (Para ver dónde hacer click)
 zones_to_check = {}
 if tipo_dolor == "Músculo":
     zones_to_check = ZONAS_MUSCULARES
@@ -220,7 +246,7 @@ for name, poly in zones_to_check.items():
 final_img = Image.alpha_composite(base_img, overlay)
 
 # --- INTERACCIÓN ---
-st.info(f"Marcando: {tipo_dolor}. Haz click en las zonas moradas.")
+st.info(f"Marcando: {tipo_dolor}. Haz click en las zonas amarillas.")
 value = streamlit_image_coordinates(final_img, key="main_canvas", width=700)
 
 if value:
@@ -256,7 +282,6 @@ if value:
 st.divider()
 
 if not df.empty:
-
     st.write("### Historial Reciente")
-
-    st.dataframe(df[['fecha', 'usuario', 'tipo', 'region']].sort_values("fecha", ascending=False).head(5)) 
+    # Mostrar solo las últimas 5 entradas
+    st.dataframe(df[['fecha', 'usuario', 'tipo', 'region']].sort_values("fecha", ascending=False).head(5))
