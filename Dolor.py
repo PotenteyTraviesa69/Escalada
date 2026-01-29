@@ -355,7 +355,7 @@ if value:
         
         if tipo_dolor == "Herida":
             # AÑADIDO region="Piel" PARA QUE NO DE ERROR AL GUARDAR
-        if save_pain(click_x, click_y, usuario_activo, "Herida", region="Piel"):
+            if save_pain(click_x, click_y, usuario_activo, "Herida", region="Piel"):
                 st.toast("Daaabuti")
                 st.rerun()
             else:
