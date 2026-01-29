@@ -9,25 +9,31 @@ import json
 # --- CONFIGURACIÓN ---
 st.set_page_config(page_title="Me duele el hombro", layout="centered")
 
-# --- CONEXIÓN CON GOOGLE SHEETS ---
-# Función para conectar. Usamos st.cache_resource para no conectar en cada click.
+# --- CONEXIÓN CON GOOGLE SHEETS (MÉTODO MODERNO) ---
 @st.cache_resource
 def get_google_sheet():
-    # Cargar credenciales desde los secretos de Streamlit
-    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    
-    # Crea un diccionario con la info de tus secretos
-    # Asegúrate de que en Streamlit Cloud -> Settings -> Secrets tengas una sección [gcp_service_account]
-    creds_dict = dict(st.secrets["gcp_service_account"])
-    
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-    client = gspread.authorize(creds)
-    
-    # Abre la hoja por nombre (asegúrate que en tu Drive se llama EXACTAMENTE así)
-    # O mejor, usa la key/url si prefieres: client.open_by_key("TU_ID_DE_LA_URL")
-    sheet = client.open("dolores_escalada").sheet1 
-    return sheet
+    try:
+        # 1. Recuperamos el secreto como un diccionario normal
+        # Usamos .get() para evitar errores si la clave no existe, aunque debería
+        creds_dict = dict(st.secrets["gcp_service_account"])
 
+        # 2. PARCHE IMPORTANTE: Arreglar el formato de la clave privada
+        # Streamlit a veces interpreta el "\n" como texto literal en lugar de salto de línea.
+        # Esto lo corrige automáticamente:
+        if "private_key" in creds_dict:
+            creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+
+        # 3. Autenticación nativa de gspread (sin oauth2client)
+        gc = gspread.service_account_from_dict(creds_dict)
+
+        # 4. Abrir la hoja
+        sh = gc.open("dolores_escalada") # Asegúrate que este nombre es EXACTO al de tu Drive
+        return sh.sheet1
+        
+    except Exception as e:
+        st.error(f"❌ Error crítico de conexión: {e}")
+        return None
+        
 # --- 1. DEFINICIÓN DE REGIONES (ZONAS) ---
 # ... (MANTÉN TUS DICCIONARIOS ZONAS_MUSCULARES, ZONAS_ARTICULARES Y USERS_CONFIG AQUÍ IGUAL QUE ANTES) ...
 # Para ahorrar espacio en la respuesta, asumo que copias aquí tus diccionarios ZONAS_...
