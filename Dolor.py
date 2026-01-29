@@ -418,5 +418,5 @@ if value:
 st.divider()
 
 if not df.empty:
-    st.write("### Historial (Google Sheets)")
+    st.write("### Historial")
     st.dataframe(df[['fecha', 'usuario', 'tipo', 'region']].tail(5).sort_values("fecha", ascending=False))
