@@ -2,5 +2,4 @@ streamlit
 pandas
 streamlit-image-coordinates
 Pillow
-gspread
-oauth2client
+gspread>=5.10.0
