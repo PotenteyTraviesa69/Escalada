@@ -269,7 +269,7 @@ with c1:
 with c2:
     tipo_dolor = st.selectbox("Tipo de Dolor", ["Músculo", "Articulación", "Herida"])
 
-mostrar_zonas = st.toggle("Mostrar zonas", value=True)
+mostrar_zonas = st.toggle("Mostrar zonas", value=False)
 
 # --- BOTÓN DESHACER ---
 c_undo, c_dummy = st.columns([1, 3])
