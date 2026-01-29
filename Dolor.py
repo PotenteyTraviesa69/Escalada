@@ -232,21 +232,55 @@ if value:
             if not found:
                 st.warning(f"Click fuera de zona {tipo_dolor} válida.")
 
-# --- DATOS ---
 st.divider()
-if not df.empty:
-    st.write("### Historial de Heridas y Marcas (Coordenadas X, Y)")
-    # Hacemos una copia para no alterar los datos originales
-    display_df = df.copy()
-    
-    # Redondeamos decimales para que sea más fácil copiar
-    display_df['x'] = display_df['x'].round(0).astype(int)
-    display_df['y'] = display_df['y'].round(0).astype(int)
 
-    # AQUI ESTÁ EL CAMBIO: Agregamos 'x' e 'y' a la lista de columnas
-    st.dataframe(
-        display_df[['fecha', 'usuario', 'tipo', 'region', 'x', 'y']]
-        .sort_values("fecha", ascending=False)
-        .head(10), # Muestro 10 para que veas más historial
-        use_container_width=True
-    )
+# Dividimos en dos pestañas para organizar mejor
+tab1, tab2 = st.tabs(["🛠️ Constructor de Polígonos", "📋 Historial Detallado"])
+
+with tab1:
+    st.write("### Generador de código para Zonas")
+    st.info("Instrucciones: Marca 'Herida', haz click en los vértices del polígono en orden y copia el código resultante.")
+    
+    # Filtramos solo las heridas, ordenadas por antigüedad (para seguir el orden de tu dibujo)
+    puntos_poligono = df[df['tipo'] == "Herida"].sort_values("fecha", ascending=True)
+    
+    if not puntos_poligono.empty:
+        # Input para que escribas el nombre, ej: F_Dorsal_Izq
+        nombre_zona = st.text_input("Nombre de la Zona a crear:", value="NUEVA_ZONA")
+        
+        # Comprensión de lista para formatear: (x, y)
+        lista_coords = [f"({int(row['x'])}, {int(row['y'])})" for _, row in puntos_poligono.iterrows()]
+        
+        # Unimos todo en un string
+        string_coords = ", ".join(lista_coords)
+        resultado_final = f'    "{nombre_zona}": [{string_coords}],'
+        
+        # Mostramos el código listo para copiar
+        st.code(resultado_final, language="python")
+        
+        st.write(f"**Puntos capturados:** {len(lista_coords)}")
+        
+        # Botón para limpiar SOLO las heridas y empezar otra zona limpia
+        if st.button("🗑️ Limpiar puntos y empezar nueva zona", type="primary"):
+            # Mantenemos todo lo que NO sea herida (los dolores reales de tus amigos)
+            df_clean = df[df['tipo'] != "Herida"]
+            df_clean.to_csv(DATA_FILE, index=False)
+            st.toast("Puntos borrados. ¡Listo para la siguiente zona!")
+            st.rerun()
+    else:
+        st.caption("No hay puntos de tipo 'Herida' marcados actualmente.")
+
+with tab2:
+    if not df.empty:
+        st.write("### Historial Bruto")
+        # Mostramos x e y como enteros para facilitar lectura
+        display_df = df.copy()
+        display_df['x'] = display_df['x'].round(0).astype(int)
+        display_df['y'] = display_df['y'].round(0).astype(int)
+        
+        st.dataframe(
+            display_df[['fecha', 'usuario', 'tipo', 'region', 'x', 'y']]
+            .sort_values("fecha", ascending=False)
+            .head(10),
+            use_container_width=True
+        )
