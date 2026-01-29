@@ -196,7 +196,7 @@ else:
     zones_to_check = ALL_ZONES
 
 for name, poly in zones_to_check.items():
-    draw.polygon(poly, outline="purple", width=2)
+    draw.polygon(poly, outline="yellow", width=5)
 
 final_img = Image.alpha_composite(base_img, overlay)
 
