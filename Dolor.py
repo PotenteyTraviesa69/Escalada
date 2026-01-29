@@ -100,7 +100,7 @@ ZONAS_ARTICULARES = {
 # --- 2. CONFIGURACIÓN DE USUARIOS ---
 USERS_CONFIG = {
     "Álvaro": {"pattern": "solid",         "priority": 0}, 
-    "Javier": {"pattern": "circles", "priority": 1}, 
+    "Javi": {"pattern": "circles",         "priority": 1}, 
     "Jordi":  {"pattern": "cross",         "priority": 2}, 
     "Miguel": {"pattern": "dots",          "priority": 3}  
 }
