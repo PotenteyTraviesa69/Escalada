@@ -234,11 +234,11 @@ def draw_pattern_in_region(draw_ctx, polygon, user_pattern, color_rgb):
     
     elif user_pattern == "lines_oblique":
         line_color = color_rgb + (255,) 
-        for x in range(min_x, max_x, 1):
-            for y in range(min_y, max_y, 1):
+        for x in range(min_x, max_x, 3):
+            for y in range(min_y, max_y, 3):
                 if (x + y) % 10 == 0: 
                     if point_in_polygon(x, y, polygon):
-                        draw_ctx.line((x, y, x+4, y+4), fill=line_color, width=1)
+                        draw_ctx.line((x, y, x+4, y+4), fill=line_color, width=2)
 
     elif user_pattern == "cross":
         cross_color = color_rgb + (255,)
