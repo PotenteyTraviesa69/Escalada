@@ -237,5 +237,18 @@ if value:
 # --- DATOS ---
 st.divider()
 if not df.empty:
-    st.write("### Historial Reciente")
-    st.dataframe(df[['fecha', 'usuario', 'tipo', 'region']].sort_values("fecha", ascending=False).head(5))
+    st.write("### Historial de Heridas y Marcas (Coordenadas X, Y)")
+    # Hacemos una copia para no alterar los datos originales
+    display_df = df.copy()
+    
+    # Redondeamos decimales para que sea más fácil copiar
+    display_df['x'] = display_df['x'].round(0).astype(int)
+    display_df['y'] = display_df['y'].round(0).astype(int)
+
+    # AQUI ESTÁ EL CAMBIO: Agregamos 'x' e 'y' a la lista de columnas
+    st.dataframe(
+        display_df[['fecha', 'usuario', 'tipo', 'region', 'x', 'y']]
+        .sort_values("fecha", ascending=False)
+        .head(10), # Muestro 10 para que veas más historial
+        use_container_width=True
+    )
