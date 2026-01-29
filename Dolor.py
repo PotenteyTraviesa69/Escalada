@@ -354,8 +354,6 @@ if value:
         click_y = value['y'] * (W/700)
         
         if tipo_dolor == "Herida":
-            # Las heridas siguen funcionando solo para añadir (es difícil clicar el pixel exacto para borrar)
-        if tipo_dolor == "Herida":
             # AÑADIDO region="Piel" PARA QUE NO DE ERROR AL GUARDAR
         if save_pain(click_x, click_y, usuario_activo, "Herida", region="Piel"):
                 st.toast("Daaabuti")
