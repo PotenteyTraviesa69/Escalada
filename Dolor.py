@@ -106,7 +106,7 @@ USERS_CONFIG = {
 }
 
 TYPE_COLORS = {
-    "Músculo": (255, 140, 0),      # Naranja
+    "Músculo": (0, 0, 0),          # Negro
     "Articulación": (0, 0, 255),   # Azul
     "Herida": (255, 0, 0)          # Rojo
 }
@@ -171,14 +171,25 @@ def save_pain(x, y, usuario, tipo, region=None):
         return False
 
 def undo_last_pain():
-    """Borra la última fila del CSV."""
-    df = load_data()
-    if not df.empty:
-        # Elimina la última fila
-        df = df.iloc[:-1]
-        df.to_csv(DATA_FILE, index=False)
-        return True
-    return False
+    """Borra la última fila de la Google Sheet."""
+    try:
+        sheet = get_google_sheet()
+        if sheet is None: return False
+        
+        # Obtener todas las filas (es necesario para saber cuál es la última)
+        # Nota: Esto puede ser lento si tienes miles de registros, pero para uso normal va bien.
+        rows = sheet.get_all_values()
+        row_count = len(rows)
+        
+        # Si hay más de 1 fila (la 1 son las cabeceras), borramos la última
+        if row_count > 1: 
+            sheet.delete_rows(row_count)
+            st.cache_data.clear() # Limpiamos caché para que se refleje el cambio
+            return True
+        return False
+    except Exception as e:
+        st.error(f"Error al deshacer en la nube: {e}")
+        return False
 
 def draw_pattern_in_region(draw_ctx, polygon, user_pattern, color_rgb):
     min_x = int(min(p[0] for p in polygon))
