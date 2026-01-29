@@ -315,26 +315,31 @@ if not regiones_activas.empty:
                 draw_pattern_in_region(draw, poly, pattern, color)
                 
 # 2. DIBUJAR HERIDAS
+# 2. DIBUJAR HERIDAS
 if not df.empty and 'tipo' in df.columns:
-    heridas = df[df['tipo'] == "Herida"].copy() # Creamos copia para no afectar al original
+    # Filtramos solo las heridas
+    heridas = df[df['tipo'] == "Herida"].copy()
     
-    if not heridas.empty:
-        for _, row in heridas.iterrows():
-            try:
-                # 1. Limpieza agresiva de coordenadas
-                x_str = str(row['x']).replace(',', '.').strip()
-                y_str = str(row['y']).replace(',', '.').strip()
-                
-                # 2. Convertir a float
-                cx = float(x_str)
-                cy = float(y_str)
-                
-                # 3. Dibujar
-                draw.ellipse((cx-5, cy-5, cx+5, cy+5), fill=(255, 0, 0, 255), outline="white", width=2)
-            except ValueError:
-                # Si una coordenada está corrupta, la ignoramos silenciosamente
-                continue
-
+    for i, row in heridas.iterrows():
+        try:
+            # 1. Obtenemos el valor como string sea lo que sea
+            val_x = str(row['x'])
+            val_y = str(row['y'])
+            
+            # 2. Reemplazamos comas por puntos (formato europeo)
+            val_x = val_x.replace(',', '.')
+            val_y = val_y.replace(',', '.')
+            
+            # 3. Convertimos a float
+            cx = float(val_x)
+            cy = float(val_y)
+            
+            # 4. Dibujamos
+            draw.ellipse((cx-5, cy-5, cx+5, cy+5), fill=(255, 0, 0, 255), outline="black", width=1)
+            
+        except ValueError:
+            # Si el dato es basura (ej: una celda vacía), lo saltamos sin romper nada
+            continue
 # 3. DEBUG: BORDES AMARILLOS (Para ver dónde hacer click)
 zones_to_check = {}
 if tipo_dolor == "Músculo":
