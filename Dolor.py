@@ -312,12 +312,19 @@ if not regiones_activas.empty:
                 color = TYPE_COLORS.get(t_dolor, (0,0,0))
                 pattern = USERS_CONFIG[u_name]["pattern"]
                 draw_pattern_in_region(draw, poly, pattern, color)
-
+                
 # 2. DIBUJAR HERIDAS
 if not df.empty:
-    for _, row in df[df['tipo'] == "Herida"].iterrows():
-        cx, cy = row['x'], row['y']
-        draw.ellipse((cx-5, cy-5, cx+5, cy+5), fill=(255, 0, 0, 255), outline="white", width=2)
+    # Filtramos primero para evitar errores
+    heridas = df[df['tipo'] == "Herida"]
+    for _, row in heridas.iterrows():
+        try:
+            # IMPORTANTE: Convertimos a float por si Google Sheets lo devuelve como texto
+            cx = float(row['x'])
+            cy = float(row['y'])
+            draw.ellipse((cx-5, cy-5, cx+5, cy+5), fill=(255, 0, 0, 255), outline="white", width=2)
+        except Exception:
+            pass # Si una fila da error, la ignoramos y seguimos pintando
 
 # 3. DEBUG: BORDES AMARILLOS (Para ver dónde hacer click)
 zones_to_check = {}
