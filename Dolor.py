@@ -9,7 +9,6 @@ st.set_page_config(page_title="Me duele el hombro", layout="centered")
 DATA_FILE = "dolores_escalada.csv"
 
 # --- 1. DEFINICIÓN DE REGIONES (ZONAS) ---
-# He mantenido tus zonas intactas
 ZONAS_MUSCULARES = {
     "F_Pectoral_Izq": [(317, 337), (303, 409), (308, 452), (337, 476), (382, 478), (418, 449), (433, 418), (435, 366), (416, 344), (356, 322)],
     "F_Pectoral_Der": [(166,389),(195,470),(225,490),(288,473),(290,411),(274,365),(283,336),(216,338)],
@@ -102,7 +101,6 @@ def load_data():
     
     try:
         df = pd.read_csv(DATA_FILE)
-        # Verificación extra: si el CSV existe pero le faltan columnas
         if df.empty or not all(col in df.columns for col in columnas):
              return pd.DataFrame(columns=columnas)
         return df
@@ -111,27 +109,39 @@ def load_data():
 
 def save_pain(x, y, usuario, tipo, region=None):
     """Guarda el dolor y fuerza la escritura en disco inmediatamente."""
+    print(f"DEBUG: Intentando guardar dolor para {usuario} en {region}") # Debug en consola
     df = load_data()
     duplicate = False
     if region:
+        # Check de duplicados estricto
         duplicate = not df[(df['usuario'] == usuario) & (df['region'] == region) & (df['tipo'] == tipo)].empty
     
     if not duplicate:
         new_row = {"x": x, "y": y, "usuario": usuario, "tipo": tipo, "region": region, "fecha": pd.Timestamp.now()}
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-        # Importante: index=False para no crear columnas extra
-        df.to_csv(DATA_FILE, index=False) 
-        return True
+        try:
+            df.to_csv(DATA_FILE, index=False) 
+            print("DEBUG: Guardado con éxito en CSV.")
+            return True
+        except PermissionError:
+            print("ERROR: No se puede escribir en el archivo. ¿Está abierto en Excel?")
+            st.error("Error: Cierra el archivo Excel/CSV antes de guardar.")
+            return False
+    else:
+        print("DEBUG: Duplicado detectado. No se guarda.")
     return False
 
 def undo_last_pain():
     """Borra la última fila del CSV."""
     df = load_data()
     if not df.empty:
-        # Elimina la última fila
         df = df.iloc[:-1]
-        df.to_csv(DATA_FILE, index=False)
-        return True
+        try:
+            df.to_csv(DATA_FILE, index=False)
+            return True
+        except PermissionError:
+            st.error("Error: Cierra el archivo Excel antes de deshacer.")
+            return False
     return False
 
 def draw_pattern_in_region(draw_ctx, polygon, user_pattern, color_rgb):
@@ -173,22 +183,22 @@ st.title("🧗 Dolores del roco tronko")
 if 'last_click_coords' not in st.session_state:
     st.session_state['last_click_coords'] = None
 
-# Barra lateral para acciones globales
-with st.sidebar:
-    st.header("Acciones")
-    # BOTÓN DE DESHACER
-    if st.button("↩️ Deshacer último", help="Borra el último dolor registrado"):
-        if undo_last_pain():
-            st.toast("Último registro eliminado")
-            st.rerun()
-        else:
-            st.warning("No hay registros para borrar.")
-
+# --- SELECTORES SUPERIORES ---
 c1, c2 = st.columns(2)
 with c1:
     usuario_activo = st.selectbox("Usuario", list(USERS_CONFIG.keys()))
 with c2:
     tipo_dolor = st.selectbox("Tipo de Dolor", ["Músculo", "Articulación", "Herida"])
+
+# --- BOTÓN DESHACER (Debajo de los selectores) ---
+c_undo, c_dummy = st.columns([1, 3]) # Columna pequeña para el botón
+with c_undo:
+    if st.button("↩️ Deshacer último", help="Borra el último dolor registrado"):
+        if undo_last_pain():
+            st.toast("Último registro eliminado")
+            st.rerun()
+        else:
+            st.warning("No hay nada que borrar o el archivo está bloqueado.")
 
 # --- IMAGEN ---
 W, H = 1200, 1600
@@ -202,14 +212,13 @@ except:
 overlay = Image.new('RGBA', base_img.size, (0,0,0,0))
 draw = ImageDraw.Draw(overlay)
 
-# Cargar datos (ahora es seguro aunque el archivo esté vacío o corrupto)
+# Cargar datos
 df = load_data()
 
 # 1. DIBUJAR CAPAS
 ALL_ZONES = {**ZONAS_MUSCULARES, **ZONAS_ARTICULARES}
 regiones_activas = df[df['tipo'].isin(["Músculo", "Articulación"])]
 
-# Solo procesar si hay datos
 if not regiones_activas.empty:
     mapa_dolor = regiones_activas.groupby("region").apply(lambda x: x[['usuario', 'tipo']].to_dict('records')).to_dict()
 
@@ -231,7 +240,7 @@ if not df.empty:
         cx, cy = row['x'], row['y']
         draw.ellipse((cx-5, cy-5, cx+5, cy+5), fill=(255, 0, 0, 255), outline="white", width=2)
 
-# 3. DEBUG: BORDES AMARILLOS (Para ver dónde hacer click)
+# 3. ZONAS ACTIVAS (BORDES AMARILLOS)
 zones_to_check = {}
 if tipo_dolor == "Músculo":
     zones_to_check = ZONAS_MUSCULARES
@@ -252,6 +261,7 @@ value = streamlit_image_coordinates(final_img, key="main_canvas", width=700)
 if value:
     current_coords = (value['x'], value['y'])
     
+    # Solo procesar si las coordenadas han cambiado (evita bucles de recarga)
     if st.session_state['last_click_coords'] != current_coords:
         st.session_state['last_click_coords'] = current_coords
         
@@ -259,17 +269,22 @@ if value:
         click_y = value['y'] * (W/700)
         
         if tipo_dolor == "Herida":
-            save_pain(click_x, click_y, usuario_activo, "Herida")
-            st.toast("Herida guardada")
-            st.rerun()
+            if save_pain(click_x, click_y, usuario_activo, "Herida"):
+                st.toast("Herida guardada")
+                st.rerun()
+            else:
+                st.error("Error guardando herida")
+
         else:
             found = False
             for name, poly in zones_to_check.items():
                 if point_in_polygon(click_x, click_y, poly):
+                    # Intentar guardar
                     if save_pain(click_x, click_y, usuario_activo, tipo_dolor, region=name):
                         st.toast(f"Guardado: {name}")
                     else:
-                        st.toast("Dolor ya registrado")
+                        st.toast("Dolor ya registrado o error de archivo")
+                    
                     found = True
                     st.rerun()
                     break
@@ -278,10 +293,8 @@ if value:
                 st.warning(f"Click fuera de zona {tipo_dolor} válida.")
 
  # --- DATOS ---
-
 st.divider()
 
 if not df.empty:
     st.write("### Historial Reciente")
-    # Mostrar solo las últimas 5 entradas
     st.dataframe(df[['fecha', 'usuario', 'tipo', 'region']].sort_values("fecha", ascending=False).head(5))
