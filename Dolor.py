@@ -3,6 +3,8 @@ import pandas as pd
 from streamlit_image_coordinates import streamlit_image_coordinates
 from PIL import Image, ImageDraw
 import os
+import gspread  # <--- FALTABA
+from google.oauth2.service_account import Credentials
 
 # --- CONFIGURACIÓN ---
 st.set_page_config(page_title="Me duele el hombro", layout="centered")
@@ -12,20 +14,35 @@ DATA_FILE = "dolores_escalada.csv"
 # Función para conectar. Usamos st.cache_resource para no conectar en cada click.
 @st.cache_resource
 def get_google_sheet():
-    # Cargar credenciales desde los secretos de Streamlit
-    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    
-    # Crea un diccionario con la info de tus secretos
-    # Asegúrate de que en Streamlit Cloud -> Settings -> Secrets tengas una sección [gcp_service_account]
-    creds_dict = dict(st.secrets["gcp_service_account"])
-    
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-    client = gspread.authorize(creds)
-    
-    # Abre la hoja por nombre (asegúrate que en tu Drive se llama EXACTAMENTE así)
-    # O mejor, usa la key/url si prefieres: client.open_by_key("TU_ID_DE_LA_URL")
-    sheet = client.open("dolores_escalada").sheet1 
-    return sheet
+    """Conecta usando el ENLACE y corrige el error de ServiceAccountCredentials."""
+    try:
+        # 1. Definir permisos
+        scopes = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
+
+        # 2. Cargar secretos y corregir formato de clave
+        creds_dict = dict(st.secrets["gcp_service_account"])
+        if "private_key" in creds_dict:
+            creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+
+        # 3. Crear credenciales (Usa Credentials, no ServiceAccountCredentials)
+        credentials = Credentials.from_service_account_info(
+            creds_dict,
+            scopes=scopes
+        )
+
+        # 4. Autorizar
+        gc = gspread.authorize(credentials)
+
+        # 5. Abrir por URL (PEGA TU ENLACE ABAJO)
+        SH_URL = "https://docs.google.com/spreadsheets/d/1gOMu_gOJfIAC-RYTHGiIQejXS6aWP_YfP4tM7XFX9xk/edit?usp=drive_link" 
+        return gc.open_by_url(SH_URL).sheet1
+        
+    except Exception as e:
+        st.error(f"❌ Error de conexión: {e}")
+        return None
 
 # --- 1. DEFINICIÓN DE REGIONES (ZONAS) ---
 # He mantenido tus zonas intactas
