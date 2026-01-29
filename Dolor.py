@@ -233,8 +233,8 @@ def draw_pattern_in_region(draw_ctx, polygon, user_pattern, color_rgb):
     
     elif user_pattern == "circles":
         circle_color = color_rgb + (255,) # Color sólido sin transparencia
-        step = 5    # Espaciado entre círculos (más grande = menos círculos)
-        radius = 3   # Tamaño del círculo
+        step = 10    # Espaciado entre círculos (más grande = menos círculos)
+        radius = 5   # Tamaño del círculo
         for x in range(min_x, max_x, step):
             for y in range(min_y, max_y, step):
                 if point_in_polygon(x, y, polygon):
@@ -257,7 +257,7 @@ def draw_pattern_in_region(draw_ctx, polygon, user_pattern, color_rgb):
                     draw_ctx.rectangle((x, y, x+3, y+3), fill=dot_color)
 
 # --- INICIO DE APP ---
-st.title("🧗 Dolores del roco pa los tronkos")
+st.title("🧗Me hice dolor en el roco tronco")
 
 if 'last_click_coords' not in st.session_state:
     st.session_state['last_click_coords'] = None
@@ -323,19 +323,12 @@ if not df.empty and 'tipo' in df.columns:
     
     for i, row in heridas.iterrows():
         try:
-            # 1. Obtenemos el valor como string sea lo que sea
             val_x = str(row['x'])
             val_y = str(row['y'])
             
-            # 2. Reemplazamos comas por puntos (formato europeo)
-            val_x = val_x.replace(',', '.')
-            val_y = val_y.replace(',', '.')
-            
-            # 3. Convertimos a float
             cx = float(val_x)
             cy = float(val_y)
             
-            # 4. Dibujamos
             draw.ellipse((cx-15, cy-15, cx+15, cy+15), fill=(255,0, 0, 255), outline="black", width=5)
             
         except ValueError:
