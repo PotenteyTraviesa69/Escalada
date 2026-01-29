@@ -234,24 +234,24 @@ def draw_pattern_in_region(draw_ctx, polygon, user_pattern, color_rgb):
     
     elif user_pattern == "lines_oblique":
         line_color = color_rgb + (255,) 
-        for x in range(min_x, max_x, 6):
-            for y in range(min_y, max_y, 6):
+        for x in range(min_x, max_x, 2):
+            for y in range(min_y, max_y, 2):
                 if (x + y) % 10 == 0: 
                     if point_in_polygon(x, y, polygon):
-                        draw_ctx.line((x, y, x+4, y+4), fill=line_color, width=2)
+                        draw_ctx.line((x, y, x+4, y+4), fill=line_color, width=4)
 
     elif user_pattern == "cross":
         cross_color = color_rgb + (255,)
-        for x in range(min_x, max_x, 14):
-            for y in range(min_y, max_y, 14):
+        for x in range(min_x, max_x, 2):
+            for y in range(min_y, max_y, 2):
                 if point_in_polygon(x, y, polygon):
-                    draw_ctx.line((x-3, y, x+3, y), fill=cross_color, width=1)
-                    draw_ctx.line((x, y-3, x, y+3), fill=cross_color, width=1)
+                    draw_ctx.line((x-3, y, x+3, y), fill=cross_color, width=4)
+                    draw_ctx.line((x, y-3, x, y+3), fill=cross_color, width=4)
 
     elif user_pattern == "dots":
         dot_color = color_rgb + (255,)
-        for x in range(min_x, max_x, 10):
-            for y in range(min_y, max_y, 10):
+        for x in range(min_x, max_x, 2):
+            for y in range(min_y, max_y, 2):
                 if point_in_polygon(x, y, polygon):
                     draw_ctx.rectangle((x, y, x+3, y+3), fill=dot_color)
 
