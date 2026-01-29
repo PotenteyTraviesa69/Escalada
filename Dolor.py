@@ -5,8 +5,8 @@ from PIL import Image, ImageDraw
 import os
 
 # --- CONFIGURACIÓN ---
-st.set_page_config(page_title="Mapa de Escalada v6.1", layout="centered")
-DATA_FILE = "dolores_escalada_v6.csv"
+st.set_page_config(page_title="Me duele el hombro", layout="centered")
+DATA_FILE = "dolores_escalada.csv"
 
 # --- 1. DEFINICIÓN DE REGIONES ---
 ZONAS_MUSCULARES = {
