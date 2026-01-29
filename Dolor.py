@@ -314,17 +314,22 @@ if not regiones_activas.empty:
                 draw_pattern_in_region(draw, poly, pattern, color)
                 
 # 2. DIBUJAR HERIDAS
-if not df.empty:
-    # Filtramos primero para evitar errores
+if not df.empty and 'tipo' in df.columns:
     heridas = df[df['tipo'] == "Herida"]
     for _, row in heridas.iterrows():
         try:
-            # IMPORTANTE: Convertimos a float por si Google Sheets lo devuelve como texto
-            cx = float(row['x'])
-            cy = float(row['y'])
+            # CORRECCIÓN: Reemplazamos coma por punto antes de convertir a número
+            # y forzamos conversión a string primero para evitar errores
+            raw_x = str(row['x']).replace(',', '.')
+            raw_y = str(row['y']).replace(',', '.')
+            
+            cx = float(raw_x)
+            cy = float(raw_y)
+            
             draw.ellipse((cx-5, cy-5, cx+5, cy+5), fill=(255, 0, 0, 255), outline="white", width=2)
-        except Exception:
-            pass # Si una fila da error, la ignoramos y seguimos pintando
+        except Exception as e:
+            print(f"Error dibujando herida: {e}") # Para que veas el error en la consola si falla
+            pass
 
 # 3. DEBUG: BORDES AMARILLOS (Para ver dónde hacer click)
 zones_to_check = {}
