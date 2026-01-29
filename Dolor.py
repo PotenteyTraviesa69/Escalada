@@ -315,10 +315,10 @@ if not regiones_activas.empty:
                 draw_pattern_in_region(draw, poly, pattern, color)
                 
 # 2. DIBUJAR HERIDAS
-# 2. DIBUJAR HERIDAS
 if not df.empty and 'tipo' in df.columns:
     # Filtramos solo las heridas
     heridas = df[df['tipo'] == "Herida"].copy()
+    st.error(heridas)
     
     for i, row in heridas.iterrows():
         try:
