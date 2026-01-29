@@ -100,7 +100,7 @@ ZONAS_ARTICULARES = {
 # --- 2. CONFIGURACIÓN DE USUARIOS ---
 USERS_CONFIG = {
     "Álvaro": {"pattern": "solid",         "priority": 0}, 
-    "Javier": {"pattern": "lines_oblique", "priority": 1}, 
+    "Javier": {"pattern": "circles", "priority": 1}, 
     "Jordi":  {"pattern": "cross",         "priority": 2}, 
     "Miguel": {"pattern": "dots",          "priority": 3}  
 }
@@ -231,13 +231,15 @@ def draw_pattern_in_region(draw_ctx, polygon, user_pattern, color_rgb):
         fill_color = color_rgb + (140,) 
         draw_ctx.polygon(polygon, fill=fill_color)
     
-    elif user_pattern == "lines_oblique":
-        line_color = color_rgb + (255,) 
-        for x in range(min_x, max_x, 3):
-            for y in range(min_y, max_y, 3):
-                if (x + y) % 10 == 0: 
-                    if point_in_polygon(x, y, polygon):
-                        draw_ctx.line((x, y, x+4, y+4), fill=line_color, width=2)
+    elif user_pattern == "circles":
+        circle_color = color_rgb + (255,) # Color sólido sin transparencia
+        step = 5    # Espaciado entre círculos (más grande = menos círculos)
+        radius = 3   # Tamaño del círculo
+        for x in range(min_x, max_x, step):
+            for y in range(min_y, max_y, step):
+                if point_in_polygon(x, y, polygon):
+                    # Dibuja solo el borde (outline)
+                    draw_ctx.ellipse((x-radius, y-radius, x+radius, y+radius), outline=circle_color, width=2)
 
     elif user_pattern == "cross":
         cross_color = color_rgb + (255,)
