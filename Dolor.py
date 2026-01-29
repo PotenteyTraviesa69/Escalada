@@ -3,7 +3,7 @@ import pandas as pd
 from streamlit_image_coordinates import streamlit_image_coordinates
 from PIL import Image, ImageDraw
 import os
-import gspread  # <--- FALTABA
+import gspread
 from google.oauth2.service_account import Credentials
 
 # --- CONFIGURACIÓN ---
@@ -157,7 +157,7 @@ def save_pain(x, y, usuario, tipo, region=None):
     if not duplicate:
         try:
             sheet = get_google_sheet()
-            fecha = str(pd.Timestamp.now())
+            fecha = pd.Timestamp.now().strftime("%d/%m/%Y")
             # Añadir fila al final
             sheet.append_row([x, y, usuario, tipo, region, fecha])
             # Limpiar caché de datos para que al recargar aparezca el nuevo
@@ -214,7 +214,7 @@ def draw_pattern_in_region(draw_ctx, polygon, user_pattern, color_rgb):
                     draw_ctx.rectangle((x, y, x+3, y+3), fill=dot_color)
 
 # --- INICIO DE APP ---
-st.title("🧗 Dolores del roco tronko (Cloud Edition)")
+st.title("🧗 Dolores del roco tronko")
 
 if 'last_click_coords' not in st.session_state:
     st.session_state['last_click_coords'] = None
