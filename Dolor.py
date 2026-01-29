@@ -225,7 +225,7 @@ def draw_pattern_in_region(draw_ctx, polygon, user_pattern, color_rgb):
                     draw_ctx.rectangle((x, y, x+3, y+3), fill=dot_color)
 
 # --- INICIO DE APP ---
-st.title("🧗 Dolores del roco tronko")
+st.title("🧗 Dolores del roco pa los tronkos")
 
 if 'last_click_coords' not in st.session_state:
     st.session_state['last_click_coords'] = None
@@ -242,10 +242,10 @@ c_undo, c_dummy = st.columns([1, 3])
 with c_undo:
     if st.button("↩️ Deshacer último", help="Borra el último dolor registrado en la nube"):
         if undo_last_pain():
-            st.toast("Último registro eliminado de la nube")
+            st.toast("Borrao kolega")
             st.rerun()
         else:
-            st.warning("No se pudo deshacer.")
+            st.warning("Algo se ha rompido")
 
 # --- IMAGEN ---
 W, H = 1200, 1600
@@ -317,7 +317,7 @@ if value:
         
         if tipo_dolor == "Herida":
             save_pain(click_x, click_y, usuario_activo, "Herida")
-            st.toast("Herida guardada")
+            st.toast("Daaabuti")
             st.rerun()
         else:
             found = False
@@ -326,13 +326,13 @@ if value:
                     if save_pain(click_x, click_y, usuario_activo, tipo_dolor, region=name):
                         st.toast(f"Guardado: {name}")
                     else:
-                        st.toast("Dolor ya registrado")
+                        st.toast("Deja de llorar, ahí ya te dolía")
                     found = True
                     st.rerun()
                     break
             
             if not found:
-                st.warning(f"Click fuera de zona {tipo_dolor} válida.")
+                st.warning(f"Ahí no hay na bro")
 
  # --- DATOS ---
 
