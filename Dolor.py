@@ -150,7 +150,7 @@ def draw_pattern_in_region(draw_ctx, polygon, user_pattern, color_rgb):
                     draw_ctx.rectangle((x, y, x+3, y+3), fill=dot_color)
 
 # --- INICIO DE APP ---
-st.title("🧗 Mapa de Escalada v6.1")
+st.title("🧗 Dolores del roco tronko")
 
 if 'last_click_coords' not in st.session_state:
     st.session_state['last_click_coords'] = None
