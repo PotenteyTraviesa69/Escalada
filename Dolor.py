@@ -414,4 +414,4 @@ st.divider()
 
 if not df.empty:
     st.write("### Historial")
-    st.dataframe(df[['fecha', 'usuario', 'tipo', 'region']].tail(100).sort_values("fecha", ascending=False))
+    st.dataframe(df[['fecha', 'usuario', 'tipo', 'region']].tail(100).sort_values("fecha", ascending=True))
